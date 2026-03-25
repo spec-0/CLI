@@ -1,0 +1,301 @@
+openapi: 3.0.3
+info:
+  title: Winspect CLI Workspace API
+  version: 1.0.0
+  description: |
+    Org API key authenticated endpoints used by `winspect` CLI.
+    This spec is design-first and drives generated controller interfaces/models in backend.
+
+paths:
+  /api-management/cli/v1/mocks:
+    get:
+      tags:
+        - cli-workspace
+      operationId: listMocks
+      summary: List mock servers for an org
+      parameters:
+        - name: X-Org-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Mock servers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MockItem"
+    post:
+      tags:
+        - cli-workspace
+      operationId: createMock
+      summary: Create or fetch default mock server for API
+      parameters:
+        - name: X-Org-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMockRequest"
+      responses:
+        "200":
+          description: Existing or newly created mock server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateMockResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /api-management/cli/v1/spectral-ruleset:
+    get:
+      tags:
+        - cli-workspace
+      operationId: getSpectralRuleset
+      summary: Get org Spectral ruleset
+      parameters:
+        - name: X-Org-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Ruleset content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpectralRulesetResponse"
+    put:
+      tags:
+        - cli-workspace
+      operationId: putSpectralRuleset
+      summary: Save org Spectral ruleset
+      parameters:
+        - name: X-Org-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutSpectralRulesetRequest"
+      responses:
+        "200":
+          description: Status response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "402":
+          description: Plan restriction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /api-management/cli/v1/publish:
+    post:
+      tags:
+        - cli-workspace
+      operationId: publishCliSpec
+      summary: Publish OpenAPI spec from CLI
+      description: |
+        Publishes a design-time API spec for CLI workflows.
+        - If `apiId` is provided: update that API metadata/spec and publish version.
+        - If `apiId` is omitted: create a new API using `name` + `team` and publish version.
+      parameters:
+        - name: X-Org-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CliPublishRequest"
+      responses:
+        "200":
+          description: Publish result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CliPublishResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+components:
+  schemas:
+    CreateMockRequest:
+      type: object
+      properties:
+        apiId:
+          type: string
+          format: uuid
+        apiName:
+          type: string
+      description: Provide either `apiId` or `apiName`.
+
+    MockItem:
+      type: object
+      properties:
+        mockServerId:
+          type: string
+          format: uuid
+        apiId:
+          type: string
+          format: uuid
+        apiName:
+          type: string
+        name:
+          type: string
+        mockBaseUrl:
+          type: string
+
+    CreateMockResponse:
+      allOf:
+        - $ref: "#/components/schemas/MockItem"
+        - type: object
+          properties:
+            created:
+              type: boolean
+            apiKey:
+              type: string
+              nullable: true
+              description: One-time API key shown only when mock is newly created.
+
+    SpectralRulesetResponse:
+      type: object
+      properties:
+        rulesetYaml:
+          type: string
+
+    PutSpectralRulesetRequest:
+      type: object
+      properties:
+        rulesetYaml:
+          type: string
+
+    StatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+
+    CliPublishRequest:
+      type: object
+      required:
+        - version
+        - openapiSpec
+      properties:
+        apiId:
+          type: string
+          format: uuid
+          description: Existing API id. If missing, server creates new API from `name` + `team`.
+        name:
+          type: string
+          description: Required when `apiId` is not provided.
+        team:
+          type: string
+          description: |
+            Team UUID OR team slug.
+            Team slug rules: lowercase letters/numbers/hyphens only, no spaces or special chars.
+          pattern: '^([0-9a-fA-F-]{36}|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$'
+        version:
+          type: string
+          description: API version tag to publish.
+        openapiSpec:
+          type: string
+          description: OpenAPI document content (YAML or JSON).
+        gitSha:
+          type: string
+        githubRepo:
+          type: string
+        githubBranch:
+          type: string
+        specFilePath:
+          type: string
+
+    CliPublishResponse:
+      type: object
+      properties:
+        apiId:
+          type: string
+          format: uuid
+        specRecordId:
+          type: string
+          format: uuid
+        version:
+          type: string
+        created:
+          type: boolean
+          description: True if a new API was created in this publish call.
+        versionCreated:
+          type: boolean
+          description: True if a new version entry was created.
+
+    Problem:
+      type: object
+      properties:
+        status:
+          type: integer
+        title:
+          type: string
+        detail:
+          type: string

@@ -1,0 +1,56 @@
+{
+  "name": "@winspect/cli",
+  "version": "0.1.0",
+  "description": "Winspect CLI — publish API specs, create mock servers, lint, and interact with the Winspect SaaS",
+  "main": "dist/index.js",
+  "bin": {
+    "winspect": "./dist/index.js"
+  },
+  "scripts": {
+    "generate:types": "openapi-typescript \"openapi-spec/cli-api-spec.yaml\" -o \"src/types.ts\"",
+    "build": "npm run generate:types && tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "cli": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "pretest": "npm run build",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": ["winspect", "openapi", "api", "cli", "mock", "lint"],
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "conf": "^13.0.0",
+    "got": "^14.4.1",
+    "ora": "^8.1.0",
+    "cli-table3": "^0.6.5",
+    "@inquirer/prompts": "^7.2.0",
+    "open": "^10.0.0",
+    "@stoplight/spectral-core": "^1.18.1",
+    "@stoplight/spectral-rulesets": "^1.0.0",
+    "@stoplight/spectral-parsers": "^1.0.0",
+    "yaml": "^2.7.0",
+    "diff": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/diff": "^7.0.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "eslint": "^9.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "openapi-typescript": "^7.10.1"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENTS.md"
+  ]
+}
