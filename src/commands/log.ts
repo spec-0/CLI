@@ -1,5 +1,5 @@
 /**
- * winspect log — version history from registry
+ * spec0 log — version history from registry
  */
 
 import { Command } from "commander";
@@ -27,7 +27,7 @@ export function registerLogCommand(program: Command) {
     .option("--org <uuid>", "Org id override (auth)")
     .option(
       "--org-slug <slug>",
-      "Organisation slug/name for registry path when api-ref has no slash (default: name from winspect auth config)"
+      "Organisation slug/name for registry path when api-ref has no slash (default: name from spec0 auth config)"
     )
     .option("--json", "Print JSON array")
     .action(
@@ -50,7 +50,7 @@ export function registerLogCommand(program: Command) {
             if (!orgSlug) {
               console.error(
                 chalk.red(
-                  "Set --org-slug <slug> or use org-slug/api-name, or run winspect auth login."
+                  "Set --org-slug <slug> or use org-slug/api-name, or run spec0 auth login."
                 )
               );
               process.exit(1);
@@ -106,7 +106,7 @@ export function registerLogCommand(program: Command) {
           }
         } catch (err) {
           if (is401(err)) {
-            console.error(chalk.red("Token invalid. Run 'winspect auth login'."));
+            console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
             process.exit(1);
           }
           console.error(chalk.red(`Log failed: ${(err as Error).message}`));

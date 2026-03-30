@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: Winspect CLI Workspace API
+  title: Spec0 CLI Workspace API
   version: 1.0.0
   description: |
-    Org API key authenticated endpoints used by `winspect` CLI.
+    Org API key authenticated endpoints used by `spec0` CLI.
     This spec is design-first and drives generated controller interfaces/models in backend.
 
 paths:
@@ -241,36 +241,46 @@ components:
     CliPublishRequest:
       type: object
       required:
-        - version
         - openapiSpec
       properties:
         apiId:
           type: string
           format: uuid
-          description: Existing API id. If missing, server creates new API from `name` + `team`.
+          description: Existing API id (backward compat). Prefer slug-based upsert via name.
         name:
           type: string
-          description: Required when `apiId` is not provided.
+          description: |
+            API name (kebab-case). If omitted, derived from the basename of specFilePath.
+            Never derived from info.title — title is display metadata, not the API identity.
+          pattern: '^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$'
         team:
           type: string
           description: |
-            Team UUID OR team slug.
-            Team slug rules: lowercase letters/numbers/hyphens only, no spaces or special chars.
+            Team UUID or slug. If omitted, API lands in org's "Unassigned APIs" team.
           pattern: '^([0-9a-fA-F-]{36}|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$'
         version:
           type: string
-          description: API version tag to publish.
+          description: |
+            Semver version tag. If omitted, extracted from info.version in the spec.
         openapiSpec:
           type: string
           description: OpenAPI document content (YAML or JSON).
         gitSha:
           type: string
+          description: Git commit SHA. Used as idempotency key — same SHA = no-op.
         githubRepo:
           type: string
         githubBranch:
           type: string
         specFilePath:
           type: string
+          description: Relative path to spec file. Used to derive API name if name is omitted.
+        semver:
+          type: boolean
+          default: false
+          description: |
+            Auto-compute next version via oasdiff diff classification
+            (PATCH / NON_BREAKING / BREAKING).
 
     CliPublishResponse:
       type: object
@@ -285,10 +295,31 @@ components:
           type: string
         created:
           type: boolean
-          description: True if a new API was created in this publish call.
+          description: True if a new API entity was created.
         versionCreated:
           type: boolean
-          description: True if a new version entry was created.
+          description: True if a new version snapshot was created.
+        noChanges:
+          type: boolean
+          description: True if git SHA matched — no changes detected, no-op.
+        versionUnchanged:
+          type: boolean
+          description: Spec changed but version tag is the same as the stored HEAD.
+        versionUnchangedHint:
+          type: string
+          description: Human-readable hint for versionUnchanged case.
+        apiName:
+          type: string
+          description: Resolved API name.
+        teamName:
+          type: string
+          description: Resolved team name.
+        orgSlug:
+          type: string
+          description: Organisation slug.
+        registryUrl:
+          type: string
+          description: Canonical registry path (e.g. /registry/{orgSlug}/{apiName}).
 
     Problem:
       type: object

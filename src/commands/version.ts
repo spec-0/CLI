@@ -1,5 +1,5 @@
 /**
- * winspect version — CLI and runtime info
+ * spec0 version — CLI and runtime info
  */
 
 import { Command } from "commander";
@@ -8,7 +8,7 @@ import { getVersionInfo } from "../lib/version.js";
 export function registerVersionCommand(program: Command) {
   program
     .command("version")
-    .description("Print CLI version, Node.js version, and optional git ref (WINSPECT_CLI_GIT_REF)")
+    .description("Print CLI version, Node.js version, and optional git ref (SPEC0_CLI_GIT_REF)")
     .option("--json", "Print machine-readable JSON")
     .action((opts: { json?: boolean }) => {
       const info = getVersionInfo();

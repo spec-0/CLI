@@ -18,7 +18,7 @@ describe("config", () => {
     setOrgConfig(testOrgId, {
       apiKey: "key",
       name: "acme",
-      apiUrl: "https://api.winspect.io",
+      apiUrl: "https://api.spec0.io",
     });
     const org = getOrgConfig(testOrgId);
     expect(org?.name).toBe("acme");

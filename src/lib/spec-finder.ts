@@ -25,7 +25,7 @@ export function findSpecInDir(cwd: string = process.cwd()): string | null {
 
 export function findSpecsInMonorepo(cwd: string): string[] {
   const found: string[] = [];
-  // Simple scan: look for .winspect.yaml in subdirs, then resolve spec from each
+  // Simple scan: look for .spec0.yaml in subdirs, then resolve spec from each
   // For v1, just scan one level
   try {
     const entries = readdirSync(cwd, { withFileTypes: true });

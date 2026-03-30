@@ -1,5 +1,5 @@
 /**
- * Resolve OpenAPI spec path from: subcommand --spec-file > global winspect --spec-file > positional.
+ * Resolve OpenAPI spec path from: subcommand --spec-file > global spec0 --spec-file > positional.
  */
 
 import chalk from "chalk";
@@ -37,7 +37,7 @@ export function resolveCliSpecPathFromFlags(
     if (resolvedAbs[i] !== firstAbs) {
       console.error(
         chalk.red(
-          "Conflicting spec paths: use only one of --spec-file, winspect --spec-file, or the positional [spec-file], and ensure they refer to the same file."
+          "Conflicting spec paths: use only one of --spec-file, spec0 --spec-file, or the positional [spec-file], and ensure they refer to the same file."
         )
       );
       process.exit(1);

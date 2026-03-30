@@ -1,5 +1,5 @@
 /**
- * winspect auth login | logout | status | token | switch
+ * spec0 auth login | logout | status | token | switch
  */
 
 import { Command } from "commander";
@@ -25,17 +25,38 @@ function getApiUrl(): string {
   return resolvedPlatformApiUrl();
 }
 
+function printAuthStatus() {
+  const defaultOrgId = getDefaultOrgId();
+  if (!defaultOrgId) {
+    console.log(chalk.yellow("Not logged in. Run 'spec0 auth login'."));
+    console.log(chalk.gray("For CI/CD, set SPEC0_TOKEN and SPEC0_ORG_ID environment variables."));
+    return;
+  }
+  const org = getOrgConfig(defaultOrgId);
+  if (!org) {
+    console.log(chalk.yellow("Org config missing. Run 'spec0 auth login'."));
+    return;
+  }
+  console.log(chalk.green("✓ Logged in"));
+  console.log(`  Org:     ${org.name}`);
+  console.log(`  API URL: ${org.apiUrl}`);
+  console.log(`  Key:     ${org.keyName ?? "(unnamed)"}`);
+}
+
 export function registerAuthCommands(program: Command) {
+  // Top-level whoami shorthand
+  program
+    .command("whoami")
+    .description("Show the active org and authentication state")
+    .action(printAuthStatus);
+
   const auth = program.command("auth").description("Authentication and org management");
 
   auth
     .command("login")
-    .description("Browser-based login, stores API key in ~/.winspect/config.json")
-    .option("--app-url <url>", "Web app origin for /cli-auth (default: PLATFORM_APP_URL or local Next.js)")
-    .option(
-      "--api-url <url>",
-      "Backend API base for later commands, e.g. http://localhost:8080/api-management (default: PLATFORM_API_URL)"
-    )
+    .description("Log in via browser and store credentials in ~/.spec0/config.json")
+    .option("--app-url <url>", "Web app origin for /cli-auth (overrides SPEC0_APP_URL)")
+    .option("--api-url <url>", "Backend API base (overrides SPEC0_API_URL)")
     .action(async (opts: { appUrl?: string; apiUrl?: string }) => {
       const appUrl = opts.appUrl ?? getAppUrl();
       const state = randomBytes(16).toString("hex");
@@ -67,7 +88,7 @@ export function registerAuthCommands(program: Command) {
               if (token && orgId) {
                 res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
                 res.end(
-                  `<!DOCTYPE html><html><head><title>Winspect CLI</title></head><body><p style="font-family:sans-serif;padding:2rem;">Authorization complete. You can close this window and return to the terminal.</p></body></html>`
+                  `<!DOCTYPE html><html><head><title>Spec0 CLI</title></head><body><p style="font-family:sans-serif;padding:2rem;">Authorization complete. You can close this window and return to the terminal.</p></body></html>`
                 );
                 doResolve({ token, orgId, orgName });
               } else {
@@ -94,7 +115,7 @@ export function registerAuthCommands(program: Command) {
             if (!resolved && server.listening) {
               server.close();
               doResolve({
-                error: "Login timed out. Run 'winspect auth login' again or set PLATFORM_API_TOKEN manually.",
+                error: "Login timed out. Run 'spec0 auth login' again, or set SPEC0_TOKEN and SPEC0_ORG_ID for non-interactive use.",
               });
             }
           }, 120000);
@@ -135,26 +156,12 @@ export function registerAuthCommands(program: Command) {
 
   auth
     .command("status")
-    .description("Print current user, org, plan, key name")
-    .action(async () => {
-      const defaultOrgId = getDefaultOrgId();
-      if (!defaultOrgId) {
-        console.log(chalk.yellow("Not logged in. Run 'winspect auth login' or set PLATFORM_API_TOKEN."));
-        return;
-      }
-      const org = getOrgConfig(defaultOrgId);
-      if (!org) {
-        console.log(chalk.yellow("Org config missing. Run 'winspect auth login'."));
-        return;
-      }
-      console.log(`Org: ${org.name}`);
-      console.log(`API URL: ${org.apiUrl}`);
-      console.log(`Key: ${org.keyName ?? "(unnamed)"}`);
-    });
+    .description("Show the active org and authentication state")
+    .action(printAuthStatus);
 
   auth
     .command("token")
-    .description("Print token (for scripting: winspect auth token | pbcopy)")
+    .description("Print token (for scripting: spec0 auth token | pbcopy)")
     .action(async () => {
       const defaultOrgId = getDefaultOrgId();
       if (!defaultOrgId) process.exit(1);

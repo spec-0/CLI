@@ -1,5 +1,5 @@
 /**
- * winspect search — semantic search via RAG (proxied by platform)
+ * spec0 search — semantic search via RAG (proxied by platform)
  */
 
 import { Command } from "commander";
@@ -54,7 +54,7 @@ export function registerSearchCommand(program: Command) {
         }
       } catch (err) {
         if (is401(err)) {
-          console.error(chalk.red("Token invalid. Run 'winspect auth login'."));
+          console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
           process.exit(1);
         }
         console.error(chalk.red(`Search failed: ${(err as Error).message}`));

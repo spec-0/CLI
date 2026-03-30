@@ -1,9 +1,11 @@
 /**
  * Resolve org API URL, token, and org id for CLI commands.
- * Priority: env PLATFORM_* > --org flag > default org from config.
+ * Priority: env SPEC0_* > --org flag > default org from config.
  *
- * **`PLATFORM_API_URL`** (when set) overrides the API base stored at login for every command,
- * so you can fix a bad `apiUrl` or point at another backend without editing ~/.winspect/config.json.
+ * **`SPEC0_API_URL`** (when set) overrides the API base stored at login for every command,
+ * so you can fix a bad `apiUrl` or point at another backend without editing ~/.spec0/config.json.
+ *
+ * Legacy: `PLATFORM_API_TOKEN` / `PLATFORM_ORG_ID` / `PLATFORM_API_URL` are still accepted.
  */
 
 import { getDefaultOrgId, getOrgConfig } from "./config.js";
@@ -17,9 +19,9 @@ export interface ResolvedOrgContext {
 }
 
 export function resolveOrgContext(optionsOrgId?: string): ResolvedOrgContext | null {
-  const token = process.env.PLATFORM_API_TOKEN;
-  const envOrg = process.env.PLATFORM_ORG_ID;
-  const envApi = process.env.PLATFORM_API_URL;
+  const token = process.env.SPEC0_TOKEN ?? process.env.PLATFORM_API_TOKEN;
+  const envOrg = process.env.SPEC0_ORG_ID ?? process.env.PLATFORM_ORG_ID;
+  const envApi = process.env.SPEC0_API_URL ?? process.env.PLATFORM_API_URL;
 
   if (token && envOrg) {
     const fromConfig = getOrgConfig(envOrg);
@@ -39,7 +41,7 @@ export function resolveOrgContext(optionsOrgId?: string): ResolvedOrgContext | n
   const storedApi = org.apiUrl?.trim()
     ? org.apiUrl.replace(/\/$/, "")
     : resolvedPlatformApiUrl();
-  const apiUrl = (envApi?.trim() ? envApi.trim().replace(/\/$/, "") : storedApi);
+  const apiUrl = envApi?.trim() ? envApi.trim().replace(/\/$/, "") : storedApi;
   return {
     orgId,
     apiKey: org.apiKey,
@@ -52,7 +54,7 @@ export function requireOrgContext(optionsOrgId?: string): ResolvedOrgContext {
   const ctx = resolveOrgContext(optionsOrgId);
   if (!ctx) {
     throw new Error(
-      "Not authenticated. Run 'winspect auth login' or set PLATFORM_API_TOKEN and PLATFORM_ORG_ID."
+      "Not authenticated. Run 'spec0 auth login' to log in, or set SPEC0_TOKEN and SPEC0_ORG_ID environment variables."
     );
   }
   return ctx;

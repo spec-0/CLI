@@ -1,5 +1,5 @@
 /**
- * winspect diff — compare two OpenAPI specs (registry refs and/or local files)
+ * spec0 diff — compare two OpenAPI specs (registry refs and/or local files)
  */
 
 import { Command } from "commander";
@@ -28,7 +28,7 @@ async function loadSpecContent(token: string, ctx: ResolvedOrgContext): Promise<
 
 function tryOasdiffBreaking(oldSpec: string, newSpec: string): string | null {
   try {
-    const dir = mkdtempSync(join(tmpdir(), "winspect-diff-"));
+    const dir = mkdtempSync(join(tmpdir(), "spec0-diff-"));
     const a = join(dir, "a.yaml");
     const b = join(dir, "b.yaml");
     writeFileSync(a, oldSpec, "utf-8");
@@ -74,7 +74,7 @@ export function registerDiffCommand(program: Command) {
           right = await loadSpecContent(b, ctx);
         } catch (err) {
           if (is401(err)) {
-            console.error(chalk.red("Token invalid. Run 'winspect auth login'."));
+            console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
             process.exit(1);
           }
           console.error(chalk.red(`Failed to load spec: ${(err as Error).message}`));

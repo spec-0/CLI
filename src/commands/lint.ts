@@ -1,5 +1,5 @@
 /**
- * winspect lint — Spectral bundled, org ruleset fetch, JSON/text/github output
+ * spec0 lint — Spectral bundled, org ruleset fetch, JSON/text/github output
  */
 
 import { Command } from "commander";
@@ -57,7 +57,7 @@ export function registerLintCommand(program: Command) {
               chalk.yellow("No org ruleset stored on the server; using built-in OAS ruleset.")
             );
           } else {
-            rulesetFile = join(tmpdir(), `winspect-org-ruleset-${Date.now()}.yaml`);
+            rulesetFile = join(tmpdir(), `spec0-org-ruleset-${Date.now()}.yaml`);
             writeFileSync(rulesetFile, yaml, "utf-8");
           }
         } catch (e) {

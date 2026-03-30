@@ -10,7 +10,7 @@ export type VersionInfo = {
   name: string;
   version: string;
   node: string;
-  /** Set via WINSPECT_CLI_GIT_REF for local multi-branch builds */
+  /** Set via SPEC0_CLI_GIT_REF (or legacy WINSPECT_CLI_GIT_REF) for local multi-branch builds */
   gitRef?: string;
 };
 
@@ -24,7 +24,7 @@ export function readPackageVersion(): { name: string; version: string } {
   const raw = readFileSync(packageJsonPath(), "utf8");
   const pkg = JSON.parse(raw) as { name?: string; version?: string };
   return {
-    name: pkg.name ?? "@winspect/cli",
+    name: pkg.name ?? "@spec0/cli",
     version: pkg.version ?? "0.0.0",
   };
 }
@@ -35,7 +35,10 @@ export function getCliVersion(): string {
 
 export function getVersionInfo(): VersionInfo {
   const { name, version } = readPackageVersion();
-  const gitRef = process.env.WINSPECT_CLI_GIT_REF?.trim() || undefined;
+  const gitRef =
+    process.env.SPEC0_CLI_GIT_REF?.trim() ||
+    process.env.WINSPECT_CLI_GIT_REF?.trim() ||
+    undefined;
   return {
     name,
     version,

@@ -1,5 +1,5 @@
 /**
- * winspect mcp url | test
+ * spec0 mcp url | test
  */
 
 import { Command } from "commander";
@@ -16,18 +16,18 @@ export function registerMcpCommands(program: Command) {
     .action(async () => {
       const orgId = process.env.PLATFORM_ORG_ID ?? getDefaultOrgId();
       if (!orgId || !getOrgConfig(orgId)) {
-        console.error(chalk.red("Not authenticated. Run 'winspect auth login'."));
+        console.error(chalk.red("Not authenticated. Run 'spec0 auth login'."));
         process.exit(1);
       }
       const org = getOrgConfig(orgId)!;
-      const mcpUrl = `https://mcp.winspect.io/org/${orgId}/mcp`;
+      const mcpUrl = `https://mcp.spec0.io/org/${orgId}/mcp`;
       console.log("Your MCP server URL:");
       console.log(`  ${mcpUrl}`);
       console.log("");
       console.log("Add to Cursor settings:");
       console.log(JSON.stringify({
         mcpServers: {
-          winspect: {
+          spec0: {
             url: mcpUrl,
             apiKey: org.apiKey,
           },
@@ -41,7 +41,7 @@ export function registerMcpCommands(program: Command) {
     .action(async () => {
       const orgId = process.env.PLATFORM_ORG_ID ?? getDefaultOrgId();
       if (!orgId || !getOrgConfig(orgId)) {
-        console.error(chalk.red("Not authenticated. Run 'winspect auth login'."));
+        console.error(chalk.red("Not authenticated. Run 'spec0 auth login'."));
         process.exit(1);
       }
       const org = getOrgConfig(orgId)!;

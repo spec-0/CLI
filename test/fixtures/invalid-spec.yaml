@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: Bad API
+  version: 0.1.0
+paths:
+  /items:
+    get:
+      responses:
+        "200":
+          description: ok

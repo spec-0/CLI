@@ -98,24 +98,32 @@ export interface components {
         CliPublishRequest: {
             /**
              * Format: uuid
-             * @description Existing API id. If missing, server creates new API from `name` + `team`.
+             * @description Existing API id (backward compat). Prefer slug-based upsert via name.
              */
             apiId?: string;
-            /** @description Required when `apiId` is not provided. */
-            name?: string;
             /**
-             * @description Team UUID OR team slug.
-             *     Team slug rules: lowercase letters/numbers/hyphens only, no spaces or special chars.
+             * @description API name (kebab-case). If omitted, derived from the basename of specFilePath.
+             *     Never derived from info.title — title is display metadata, not the API identity.
              */
+            name?: string;
+            /** @description Team UUID or slug. If omitted, API lands in org's "Unassigned APIs" team. */
             team?: string;
-            /** @description API version tag to publish. */
-            version: string;
+            /** @description Semver version tag. If omitted, extracted from info.version in the spec. */
+            version?: string;
             /** @description OpenAPI document content (YAML or JSON). */
             openapiSpec: string;
+            /** @description Git commit SHA. Used as idempotency key — same SHA = no-op. */
             gitSha?: string;
             githubRepo?: string;
             githubBranch?: string;
+            /** @description Relative path to spec file. Used to derive API name if name is omitted. */
             specFilePath?: string;
+            /**
+             * @description Auto-compute next version via oasdiff diff classification
+             *     (PATCH / NON_BREAKING / BREAKING).
+             * @default false
+             */
+            semver: boolean;
         };
         CliPublishResponse: {
             /** Format: uuid */
@@ -123,10 +131,24 @@ export interface components {
             /** Format: uuid */
             specRecordId?: string;
             version?: string;
-            /** @description True if a new API was created in this publish call. */
+            /** @description True if a new API entity was created. */
             created?: boolean;
-            /** @description True if a new version entry was created. */
+            /** @description True if a new version snapshot was created. */
             versionCreated?: boolean;
+            /** @description True if git SHA matched — no changes detected, no-op. */
+            noChanges?: boolean;
+            /** @description Spec changed but version tag is the same as the stored HEAD. */
+            versionUnchanged?: boolean;
+            /** @description Human-readable hint for versionUnchanged case. */
+            versionUnchangedHint?: string;
+            /** @description Resolved API name. */
+            apiName?: string;
+            /** @description Resolved team name. */
+            teamName?: string;
+            /** @description Organisation slug. */
+            orgSlug?: string;
+            /** @description Canonical registry path (e.g. /registry/{orgSlug}/{apiName}). */
+            registryUrl?: string;
         };
         Problem: {
             status?: number;

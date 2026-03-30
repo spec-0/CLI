@@ -1,11 +1,26 @@
-# Agent notes — Winspect CLI
+# Agent notes — Spec0 CLI
 
-This repository is the **Node.js** CLI (`@winspect/cli`). There is also a legacy **Go** `winspect resolve` binary in the same repo; do not confuse the two.
+This repository is the **Node.js** CLI (`@spec0/cli`). There is also a legacy **Go** `spec0 resolve` binary in the same repo; do not confuse the two.
 
 ## Environment
 
 - **Node:** `>=20` (see `package.json` `engines`).
 - **Install deps:** `npm ci` (CI) or `npm install` (local).
+
+## Use the CLI locally before pushing (global `spec0`)
+
+To exercise the same global **`spec0`** command users get, from the repo root after dependencies are installed:
+
+```bash
+npm run build
+npm link
+```
+
+Then `spec0` on your PATH runs this checkout’s `dist/index.js`. **Rebuild after every change** to `src/`: `npm run build`.
+
+To remove the global link: run **`npm unlink`** from the repo root (undoes `npm link`), or `npm unlink -g @spec0/cli` / `npm uninstall -g @spec0/cli`.
+
+**Alternative:** `npm install -g .` after each build (heavier than `npm link`).
 
 ## Verify changes
 
@@ -18,20 +33,20 @@ node dist/index.js version --json
 
 Or `npm run cli -- <args>` (runs `node dist/index.js`).
 
-**Tests:** `npm test` runs `pretest` (which runs `npm run build`) then Jest with `NODE_OPTIONS=--experimental-vm-modules`. Do not assume a global `winspect` install matches the working tree.
+**Tests:** `npm test` runs `pretest` (which runs `npm run build`) then Jest with `NODE_OPTIONS=--experimental-vm-modules`. A global `spec0` from `npm link` matches the working tree only **after** the latest `npm run build`.
 
 ## Multi-branch / multi-worktree
 
 - Prefer **`node /absolute/path/to/checkout/dist/index.js`** so each branch or git worktree uses its own build.
-- Optionally set **`WINSPECT_CLI_GIT_REF`** (e.g. `$(git rev-parse --abbrev-ref HEAD)`) when comparing `winspect version` output across checkouts.
-- **`npm link`** only maps one checkout to the global `winspect` name; it is a poor fit for comparing two branches.
+- Optionally set **`SPEC0_CLI_GIT_REF`** (e.g. `$(git rev-parse --abbrev-ref HEAD)`) when comparing `spec0 version` output across checkouts.
+- **`npm link`** only maps one checkout to the global `spec0` name; it is a poor fit for comparing two branches.
 
 ## Platform URLs
 
-- **`PLATFORM_APP_URL`** — Web app: **browser auth** (`winspect auth login` → `/cli-auth`) and **register output links** to the dashboard (`specUrl`). Not used for REST calls.
+- **`PLATFORM_APP_URL`** — Web app: **browser auth** (`spec0 auth login` → `/cli-auth`) and **register output links** to the dashboard (`specUrl`). Not used for REST calls.
 - **`PLATFORM_API_URL`** — Spring backend: **every** programmatic HTTP call (register, pull, mocks, lint, search, …). Stored as `org.apiUrl` on login.
 
-Defaults in `src/lib/platform-defaults.ts`. **`PLATFORM_API_URL` in the environment overrides** stored `apiUrl` for all commands (see `src/lib/auth-context.ts`). Re-login to persist a new API base in `~/.winspect/config.json`.
+Defaults in `src/lib/platform-defaults.ts`. **`PLATFORM_API_URL` in the environment overrides** stored `apiUrl` for all commands (see `src/lib/auth-context.ts`). Re-login to persist a new API base in `~/.spec0/config.json`.
 
 ## API clients
 
@@ -39,4 +54,4 @@ Implementation lives under `src/` (Commander commands, `src/lib/*`). Follow exis
 
 ## Product OS
 
-Feature and backlog tracking for Winspect lives in **api-govern-os**; sync substantive product or CLI surface changes there when applicable.
+Feature and backlog tracking for Spec0 lives in **api-govern-os**; sync substantive product or CLI surface changes there when applicable.

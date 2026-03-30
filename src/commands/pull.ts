@@ -1,5 +1,5 @@
 /**
- * winspect pull <org>/<name> — download spec from registry
+ * spec0 pull <org>/<name> — download spec from registry
  */
 
 import { Command } from "commander";
@@ -50,7 +50,7 @@ export function registerPullCommand(program: Command) {
         }
       } catch (err) {
         if (is401(err)) {
-          console.error(chalk.red("Token invalid. Run 'winspect auth login'."));
+          console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
           process.exit(1);
         }
         console.error(chalk.red(`Pull failed: ${(err as Error).message}`));

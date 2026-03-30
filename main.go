@@ -10,7 +10,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 || os.Args[1] != "resolve" {
-		fmt.Fprintln(os.Stderr, "Usage: winspect resolve --spec path/to/api-spec.yaml [--output -]")
+		fmt.Fprintln(os.Stderr, "Usage: spec0 resolve --spec path/to/api-spec.yaml [--output -]")
 		os.Exit(1)
 	}
 

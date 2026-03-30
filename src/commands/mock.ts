@@ -1,5 +1,5 @@
 /**
- * winspect mock create | list | url | delete | regenerate-key | logs
+ * spec0 mock create | list | url | delete | regenerate-key | logs
  */
 
 import { Command } from "commander";
@@ -57,7 +57,7 @@ export function registerMockCommands(program: Command) {
         }
       } catch (err) {
         if (is401(err)) {
-          console.error(chalk.red("Token invalid. Run 'winspect auth login'."));
+          console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
           process.exit(1);
         }
         console.error(chalk.red((err as Error).message));
@@ -90,7 +90,7 @@ export function registerMockCommands(program: Command) {
         console.log(table.toString());
       } catch (err) {
         if (is401(err)) {
-          console.error(chalk.red("Token invalid. Run 'winspect auth login'."));
+          console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
           process.exit(1);
         }
         console.error(chalk.red((err as Error).message));
@@ -120,25 +120,4 @@ export function registerMockCommands(program: Command) {
       console.log(`${ctx.apiUrl}${hit.mockBaseUrl ?? ""}`);
     });
 
-  mock
-    .command("delete <api-name>")
-    .description("Delete mock server (by API name)")
-    .option("--org <uuid>", "Org id override")
-    .action(async (_apiName: string) => {
-      console.log(chalk.yellow("Use the Winspect UI or admin API to delete mock servers for now."));
-    });
-
-  mock
-    .command("regenerate-key <name>")
-    .description("Rotate API key for mock server")
-    .action(async (_name: string) => {
-      console.log(chalk.yellow("regenerate-key: use the Winspect UI → Mock server → Regenerate key."));
-    });
-
-  mock
-    .command("logs <name>")
-    .description("Tail request logs for mock server")
-    .action(async (_name: string) => {
-      console.log(chalk.yellow("logs: coming soon (platform UI has request history)."));
-    });
 }

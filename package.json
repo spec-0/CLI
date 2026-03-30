@@ -1,10 +1,10 @@
 {
-  "name": "@winspect/cli",
+  "name": "@spec0/cli",
   "version": "0.1.0",
-  "description": "Winspect CLI — publish API specs, create mock servers, lint, and interact with the Winspect SaaS",
+  "description": "Spec0 CLI — publish API specs, create mock servers, lint, and interact with the Spec0 platform",
   "main": "dist/index.js",
   "bin": {
-    "winspect": "./dist/index.js"
+    "spec0": "./dist/index.js"
   },
   "scripts": {
     "generate:types": "openapi-typescript \"openapi-spec/cli-api-spec.yaml\" -o \"src/types.ts\"",
@@ -15,12 +15,13 @@
     "lint": "eslint src --ext .ts",
     "pretest": "npm run build",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:smoke": "npm run build && node scripts/smoke.mjs",
     "prepublishOnly": "npm run build"
   },
   "engines": {
     "node": ">=20.0.0"
   },
-  "keywords": ["winspect", "openapi", "api", "cli", "mock", "lint"],
+  "keywords": ["spec0", "openapi", "api", "cli", "mock", "lint"],
   "type": "module",
   "license": "MIT",
   "dependencies": {

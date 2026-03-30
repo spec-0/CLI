@@ -1,0 +1,56 @@
+openapi: 3.0.3
+info:
+  title: Payment API
+  version: 1.0.0
+  description: Processes payments and refunds.
+servers:
+  - url: https://api.example.com
+paths:
+  /payments:
+    get:
+      summary: List payments
+      operationId: listPayments
+      responses:
+        "200":
+          description: A list of payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+  /payments/{id}:
+    get:
+      summary: Get payment by ID
+      operationId: getPayment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Payment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "404":
+          description: Not found
+components:
+  schemas:
+    Payment:
+      type: object
+      required: [id, amount, currency]
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+          description: Amount in smallest currency unit (e.g. cents)
+        currency:
+          type: string
+          example: USD

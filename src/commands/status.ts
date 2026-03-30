@@ -1,5 +1,5 @@
 /**
- * winspect status — org overview (APIs, mocks, teams, plan)
+ * spec0 status — org overview (APIs, mocks, teams, plan)
  */
 
 import { Command } from "commander";
@@ -28,7 +28,7 @@ export function registerStatusCommand(program: Command) {
     .action(async (opts: { org?: string; json?: boolean }) => {
       const orgId = process.env.PLATFORM_ORG_ID ?? getDefaultOrgId();
       if (!orgId || !getOrgConfig(orgId)) {
-        console.log(chalk.yellow("Not logged in. Run 'winspect auth login'."));
+        console.log(chalk.yellow("Not logged in. Run 'spec0 auth login'."));
         return;
       }
       const org = getOrgConfig(orgId)!;
@@ -92,7 +92,7 @@ export function registerStatusCommand(program: Command) {
         }
       } catch (err) {
         if (is401(err)) {
-          console.error(chalk.red("Token invalid. Run 'winspect auth login'."));
+          console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
           process.exit(1);
         }
         console.error(chalk.red(`Status failed: ${(err as Error).message}`));

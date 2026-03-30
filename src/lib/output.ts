@@ -39,13 +39,41 @@ export function formatPublishText(output: {
   version: string;
   specUrl: string;
   mockUrl?: string;
+  apiName?: string;
+  teamName?: string;
+  registryUrl?: string;
+  noChanges?: boolean;
+  versionUnchanged?: boolean;
+  versionUnchangedHint?: string;
+  created?: boolean;
 }): string {
   const lines: string[] = [];
-  lines.push("Published!");
-  lines.push(`  API ID:     ${output.apiId}`);
-  lines.push(`  Version:    ${output.version} (latest)`);
-  lines.push(`  Spec Page:  ${output.specUrl}`);
-  if (output.mockUrl) lines.push(`  Mock URL:   ${output.mockUrl}`);
+
+  if (output.noChanges) {
+    lines.push(chalk.green("✓ Already up to date") + chalk.gray(" (git SHA unchanged)"));
+    if (output.apiName) lines.push(`  api:      ${output.apiName} @ v${output.version}`);
+    if (output.registryUrl) lines.push(`  registry: ${output.registryUrl}`);
+    return lines.join("\n");
+  }
+
+  const label = output.created ? chalk.green("✓ Created") : chalk.green("✓ Updated");
+  const nameLabel = output.apiName ?? output.apiId;
+  lines.push(`${label} ${chalk.bold(nameLabel)} v${output.version}`);
+
+  if (output.apiName) lines.push(`  api:      ${output.apiName}`);
+  if (output.teamName) lines.push(`  team:     ${output.teamName}`);
+  if (output.registryUrl) lines.push(`  registry: ${output.registryUrl}`);
+  lines.push(`  spec page: ${output.specUrl}`);
+  if (output.mockUrl) lines.push(`  mock:     ${output.mockUrl}`);
+
+  if (output.versionUnchanged) {
+    lines.push("");
+    lines.push(
+      chalk.yellow("⚠ ") +
+        chalk.yellow(output.versionUnchangedHint ?? `Spec changed but version is still ${output.version}. Pass --semver to auto-bump.`)
+    );
+  }
+
   return lines.join("\n");
 }
 

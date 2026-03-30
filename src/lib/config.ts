@@ -1,5 +1,5 @@
 /**
- * ~/.winspect/config.json management
+ * ~/.spec0/config.json management
  * XDG-compliant config via conf package
  */
 
@@ -12,7 +12,7 @@ export interface OrgConfig {
   keyName?: string;
 }
 
-export interface WinspectConfig {
+export interface Spec0Config {
   version: number;
   defaultOrg?: string;
   telemetry?: boolean;
@@ -26,8 +26,8 @@ const schema = {
   orgs: { type: "object", default: {} },
 } as const;
 
-const store = new Conf<WinspectConfig>({
-  projectName: "winspect",
+const store = new Conf<Spec0Config>({
+  projectName: "spec0",
   defaults: {
     version: 1,
     defaultOrg: undefined,
@@ -36,7 +36,7 @@ const store = new Conf<WinspectConfig>({
   },
 });
 
-export function getConfig(): WinspectConfig {
+export function getConfig(): Spec0Config {
   return {
     version: store.get("version", 1),
     defaultOrg: store.get("defaultOrg"),

@@ -120,3 +120,18 @@ export { orgHeaders };
 export function is401(err: unknown): boolean {
   return (err as { response?: { statusCode?: number } })?.response?.statusCode === 401;
 }
+
+export function is402(err: unknown): boolean {
+  return (err as { response?: { statusCode?: number } })?.response?.statusCode === 402;
+}
+
+/** Extract a human-readable error message from a backend error response. */
+export function extractErrorMessage(err: unknown): string | null {
+  const body = (err as { response?: { body?: unknown } })?.response?.body;
+  if (typeof body === "object" && body !== null) {
+    const b = body as Record<string, unknown>;
+    const msg = b["message"] ?? b["detail"] ?? b["error"];
+    if (msg) return String(msg);
+  }
+  return null;
+}
