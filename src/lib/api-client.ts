@@ -105,6 +105,23 @@ export function createOrgApiClient(ctx: ResolvedOrgContext) {
       });
       return res.body as T;
     },
+    async postMultipart<T = unknown>(
+      path: string,
+      fields: Record<string, { content: Buffer | string; filename: string }>,
+      headers?: Record<string, string>
+    ): Promise<T> {
+      const form = new FormData();
+      for (const [name, { content, filename }] of Object.entries(fields)) {
+        const blob = new Blob([content], { type: "application/octet-stream" });
+        form.append(name, blob, filename);
+      }
+      const res = await got.post(`${baseUrl}${path}`, {
+        body: form,
+        headers: { ...baseHeaders, Accept: "application/json", ...headers },
+        responseType: "json",
+      });
+      return res.body as T;
+    },
     async deleteJson<T = unknown>(path: string, headers?: Record<string, string>): Promise<T> {
       const res = await got.delete(`${baseUrl}${path}`, {
         headers: { ...baseHeaders, Accept: "application/json", ...headers },

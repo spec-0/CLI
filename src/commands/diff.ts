@@ -4,14 +4,17 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
+import { existsSync, readFileSync } from "fs";
 import { createTwoFilesPatch } from "diff";
-import { execFileSync } from "child_process";
-import { createOrgApiClient, is401 } from "../lib/api-client.js";
+import { createOrgApiClient, is401, extractErrorMessage } from "../lib/api-client.js";
 import { requireOrgContext, type ResolvedOrgContext } from "../lib/auth-context.js";
 import { parseRegistryRef } from "../lib/registry-ref.js";
+
+interface SpecDiffResponse {
+  hasBreakingChanges: boolean;
+  changelog?: Record<string, unknown>;
+  breakingChanges?: Record<string, unknown>[];
+}
 
 async function loadSpecContent(token: string, ctx: ResolvedOrgContext): Promise<string> {
   const trimmed = token.trim();
@@ -26,20 +29,35 @@ async function loadSpecContent(token: string, ctx: ResolvedOrgContext): Promise<
   return client.getText(path);
 }
 
-function tryOasdiffBreaking(oldSpec: string, newSpec: string): string | null {
-  try {
-    const dir = mkdtempSync(join(tmpdir(), "spec0-diff-"));
-    const a = join(dir, "a.yaml");
-    const b = join(dir, "b.yaml");
-    writeFileSync(a, oldSpec, "utf-8");
-    writeFileSync(b, newSpec, "utf-8");
-    const out = execFileSync("oasdiff", ["breaking", a, b], {
-      encoding: "utf-8",
-      maxBuffer: 10 * 1024 * 1024,
-    });
-    return out;
-  } catch {
-    return null;
+async function breakingChangesViaBackend(
+  ctx: ResolvedOrgContext,
+  leftContent: string,
+  rightContent: string,
+  leftLabel: string,
+  rightLabel: string
+): Promise<void> {
+  const client = createOrgApiClient(ctx);
+  const result = await client.postMultipart<SpecDiffResponse>(
+    "/api-management/cli/v1/diff",
+    {
+      base: { content: leftContent, filename: leftLabel },
+      revision: { content: rightContent, filename: rightLabel },
+    }
+  );
+
+  if (!result.hasBreakingChanges) {
+    console.log(chalk.green("No breaking changes detected."));
+    return;
+  }
+
+  console.log(chalk.red(`Breaking changes detected:`));
+  if (result.breakingChanges?.length) {
+    for (const bc of result.breakingChanges) {
+      const id = bc["id"] ?? bc["text"] ?? JSON.stringify(bc);
+      const level = bc["level"] ?? "";
+      const msg = bc["message"] ?? bc["text"] ?? "";
+      console.log(chalk.red(`  [${level}] ${id}${msg ? ": " + msg : ""}`));
+    }
   }
 }
 
@@ -51,7 +69,7 @@ export function registerDiffCommand(program: Command) {
     )
     .argument("<a>", "Left: local path or org/api[@tag]")
     .argument("<b>", "Right: local path or org/api[@tag]")
-    .option("--breaking-only", "Use oasdiff CLI for breaking changes only (install: oasdiff)")
+    .option("--breaking-only", "Show breaking changes only (via backend oasdiff service)")
     .option("--org <uuid>", "Org id override for registry fetches")
     .action(
       async (
@@ -82,16 +100,17 @@ export function registerDiffCommand(program: Command) {
         }
 
         if (opts.breakingOnly) {
-          const report = tryOasdiffBreaking(left, right);
-          if (report === null) {
-            console.error(
-              chalk.red(
-                "oasdiff not available. Install: https://github.com/Tufin/oasdiff — or omit --breaking-only for a line diff."
-              )
-            );
-            process.exit(2);
+          try {
+            await breakingChangesViaBackend(ctx, left, right, a, b);
+          } catch (err) {
+            if (is401(err)) {
+              console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
+              process.exit(1);
+            }
+            const msg = extractErrorMessage(err) ?? (err as Error).message;
+            console.error(chalk.red(`Breaking change check failed: ${msg}`));
+            process.exit(1);
           }
-          console.log(report || chalk.green("No breaking changes (oasdiff)."));
           return;
         }
 
