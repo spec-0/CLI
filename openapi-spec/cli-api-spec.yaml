@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Spec0 CLI Workspace API
+  title: spec0 CLI Workspace API
   version: 1.0.0
   description: |
     Org API key authenticated endpoints used by `spec0` CLI.
@@ -174,7 +174,202 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
         "409":
-          description: Version conflict
+          description: Breaking change detected in same major version (only when oasdiff is enabled and --semver is not set)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: Validation error (bad semver or API name format)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /api-management/cli/v1/sync-status:
+    get:
+      tags:
+        - cli-workspace
+      operationId: getSyncStatus
+      summary: Check if spec needs republishing based on git SHA
+      description: |
+        Returns whether the provided git SHA differs from the last published version's SHA.
+        Used in CI/CD to skip `publish` when the spec file has not changed.
+      parameters:
+        - name: X-Org-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: apiId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: gitSha
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Sync status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncStatusResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: API not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /api-management/cli/v1/ci-config:
+    get:
+      tags:
+        - cli-workspace
+      operationId: generateCiConfig
+      summary: Generate a GitHub Actions workflow for spec0 publish
+      description: |
+        Returns a ready-to-use GitHub Actions workflow YAML that runs `spec0 publish`
+        only when the specified spec file changes.
+      parameters:
+        - name: X-Org-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: apiName
+          in: query
+          required: false
+          description: API name to embed in the generated workflow (e.g. payment-api). Falls back to spec filename basename if omitted.
+          schema:
+            type: string
+        - name: specFilePath
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: branch
+          in: query
+          required: false
+          schema:
+            type: string
+            default: main
+      responses:
+        "200":
+          description: CI config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CiConfigResponse"
+
+  /api-management/cli/v1/diff:
+    post:
+      tags:
+        - cli-workspace
+      operationId: diffSpecs
+      summary: Diff two raw OpenAPI specs via the oasdiff service
+      description: |
+        Accepts two spec files (YAML or JSON) as multipart/form-data and returns a
+        structured diff and breaking-change list from the oasdiff service.
+        Use this when diffing local files that are not yet in the registry.
+      parameters:
+        - name: X-Org-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [base, revision]
+              properties:
+                base:
+                  type: string
+                  format: binary
+                  description: The old/base OpenAPI spec file
+                revision:
+                  type: string
+                  format: binary
+                  description: The new/revised OpenAPI spec file
+      responses:
+        "200":
+          description: Diff result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpecDiffResponse"
+        "503":
+          description: oasdiff service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /api-management/cli/v1/versions/{apiId}/diff:
+    get:
+      tags:
+        - cli-workspace
+      operationId: getVersionDiff
+      summary: Get changelog diff between two published spec versions
+      parameters:
+        - name: X-Org-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: apiId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: fromTag
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: toTag
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Diff changelog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionDiffResponse"
+        "404":
+          description: API or version not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "503":
+          description: oasdiff service unavailable
           content:
             application/json:
               schema:
@@ -246,41 +441,48 @@ components:
         apiId:
           type: string
           format: uuid
-          description: Existing API id (backward compat). Prefer slug-based upsert via name.
+          description: |
+            Existing API id. Deprecated in favour of slug-based upsert (name + org).
+            Still accepted for backward compatibility.
         name:
           type: string
           description: |
-            API name (kebab-case). If omitted, derived from the basename of specFilePath.
-            Never derived from info.title — title is display metadata, not the API identity.
+            API name (kebab-case). If omitted, derived from the basename of `specFilePath`
+            (e.g. `api/payment-api.yaml` → `payment-api`). Required if `specFilePath` is also omitted.
           pattern: '^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$'
         team:
           type: string
           description: |
-            Team UUID or slug. If omitted, API lands in org's "Unassigned APIs" team.
+            Team UUID OR team slug. If omitted, the API is placed in the org's "Unassigned APIs" team.
           pattern: '^([0-9a-fA-F-]{36}|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$'
         version:
           type: string
           description: |
-            Semver version tag. If omitted, extracted from info.version in the spec.
+            Semver version to publish (MAJOR.MINOR.PATCH). If omitted, the version is extracted
+            from `info.version` in the spec. If `semver` flag is set, this field is ignored.
+          pattern: '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)([-+].+)?$'
         openapiSpec:
           type: string
           description: OpenAPI document content (YAML or JSON).
         gitSha:
           type: string
-          description: Git commit SHA. Used as idempotency key — same SHA = no-op.
+          description: |
+            Git commit SHA of the spec file. Used as the primary change detector.
+            If unchanged since last publish, the request is treated as a no-op.
         githubRepo:
           type: string
         githubBranch:
           type: string
         specFilePath:
           type: string
-          description: Relative path to spec file. Used to derive API name if name is omitted.
+          description: Path to the spec file in the repository. Used to derive API name if `name` is not provided.
         semver:
           type: boolean
           default: false
           description: |
-            Auto-compute next version via oasdiff diff classification
-            (PATCH / NON_BREAKING / BREAKING).
+            If true, the backend runs oasdiff to classify the change and auto-computes the next
+            semver tag (PATCH / NON_BREAKING / BREAKING). The computed version is stored in the
+            version snapshot; the developer's original file is never modified.
 
     CliPublishResponse:
       type: object
@@ -295,22 +497,24 @@ components:
           type: string
         created:
           type: boolean
-          description: True if a new API entity was created.
+          description: True if a new API entity was created in this publish call.
         versionCreated:
           type: boolean
           description: True if a new version snapshot was created.
         noChanges:
           type: boolean
-          description: True if git SHA matched — no changes detected, no-op.
+          description: True if git SHA matched the last published SHA — no changes detected.
         versionUnchanged:
           type: boolean
-          description: Spec changed but version tag is the same as the stored HEAD.
+          description: |
+            True when the spec changed (different git SHA) but `info.version` is the same as the
+            previously stored version. HEAD spec is still updated. Pass `--semver` to auto-bump.
         versionUnchangedHint:
           type: string
-          description: Human-readable hint for versionUnchanged case.
+          description: Human-readable hint shown when `versionUnchanged` is true.
         apiName:
           type: string
-          description: Resolved API name.
+          description: Resolved API name (from --name flag or spec filename).
         teamName:
           type: string
           description: Resolved team name.
@@ -319,7 +523,7 @@ components:
           description: Organisation slug.
         registryUrl:
           type: string
-          description: Canonical registry path (e.g. /registry/{orgSlug}/{apiName}).
+          description: Canonical registry URL for this API (e.g. /registry/{orgSlug}/{apiName}).
 
     Problem:
       type: object
@@ -330,3 +534,65 @@ components:
           type: string
         detail:
           type: string
+
+    SyncStatusResponse:
+      type: object
+      properties:
+        needsPublish:
+          type: boolean
+          description: True if the provided git SHA differs from (or is absent in) the last published version.
+        lastPublishedSha:
+          type: string
+          nullable: true
+          description: The git SHA of the last published version, or null if none exists.
+        lastPublishedVersion:
+          type: string
+          nullable: true
+          description: The version tag of the last published version.
+        apiId:
+          type: string
+          format: uuid
+          nullable: true
+
+    CiConfigResponse:
+      type: object
+      properties:
+        workflowYaml:
+          type: string
+          description: Ready-to-use GitHub Actions workflow YAML.
+        filePath:
+          type: string
+          description: Suggested file path for the workflow.
+          example: .github/workflows/spec0-publish.yml
+
+    SpecDiffResponse:
+      type: object
+      properties:
+        hasBreakingChanges:
+          type: boolean
+        changelog:
+          type: object
+          description: Structured changelog from oasdiff.
+          additionalProperties: true
+        breakingChanges:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    VersionDiffResponse:
+      type: object
+      properties:
+        fromTag:
+          type: string
+        toTag:
+          type: string
+        changelog:
+          type: object
+          description: Structured changelog from oasdiff.
+          additionalProperties: true
+        breakingChanges:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
