@@ -15,8 +15,8 @@ import { execSync } from "node:child_process";
 import chalk from "chalk";
 import { createOrgApiClient, is401 } from "../lib/api-client.js";
 import { requireOrgContext } from "../lib/auth-context.js";
-import { ExitCode, exit } from "../lib/exit-codes.js";
-import { emit, resolveOutputContext, type OutputOptions } from "../lib/output/index.js";
+import { ExitCode } from "../lib/exit-codes.js";
+import { emit, fail, resolveOutputContext, type OutputOptions } from "../lib/output/index.js";
 import { resolveRef } from "../lib/ref-resolver.js";
 import type { paths } from "../types.js";
 
@@ -49,12 +49,15 @@ export function registerSyncStatusCommand(program: Command) {
         try {
           authCtx = requireOrgContext(opts.org);
         } catch (e) {
-          exit(ExitCode.AUTH_MISSING, (e as Error).message);
+          fail(outCtx, ExitCode.AUTH_MISSING, (e as Error).message, {
+            hint: "Set SPEC0_TOKEN + SPEC0_ORG_ID, or run 'spec0 auth login'.",
+          });
         }
 
         const { apiId, apiName } = resolveIdentifier(refArg, opts);
         if (!apiId && !apiName) {
-          exit(
+          fail(
+            outCtx,
             ExitCode.USAGE,
             "Provide a ref (e.g. 'acme/orders'), --api <name>, or --api-id <uuid>.",
           );
@@ -62,10 +65,9 @@ export function registerSyncStatusCommand(program: Command) {
 
         const gitSha = opts.gitSha ?? detectGitSha();
         if (!gitSha) {
-          exit(
-            ExitCode.USAGE,
-            "Could not auto-detect git SHA (not a git repo?). Pass --git-sha <sha>.",
-          );
+          fail(outCtx, ExitCode.USAGE, "Could not auto-detect git SHA (not a git repo?).", {
+            hint: "Pass --git-sha <sha> explicitly.",
+          });
         }
 
         const params = new URLSearchParams({ gitSha });
@@ -80,13 +82,17 @@ export function registerSyncStatusCommand(program: Command) {
           emit(outCtx, res, renderText);
         } catch (err) {
           if (is401(err)) {
-            exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
+            fail(outCtx, ExitCode.AUTH_MISSING, "Token invalid or expired.", {
+              hint: "Run 'spec0 auth login' or refresh SPEC0_TOKEN.",
+            });
           }
           const status = (err as { response?: { statusCode?: number } })?.response?.statusCode;
           if (status === 404) {
-            exit(ExitCode.NOT_FOUND, `API '${apiName ?? apiId}' not found.`);
+            fail(outCtx, ExitCode.NOT_FOUND, `API '${apiName ?? apiId}' not found.`, {
+              hint: "Run 'spec0 api list' to see what exists in this org.",
+            });
           }
-          exit(ExitCode.GENERIC, `sync-status failed: ${(err as Error).message}`);
+          fail(outCtx, ExitCode.GENERIC, `sync-status failed: ${(err as Error).message}`);
         }
       },
     );

@@ -12,8 +12,8 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { createOrgApiClient, is401 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
-import { ExitCode, exit } from "../../lib/exit-codes.js";
-import { emit, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
+import { ExitCode } from "../../lib/exit-codes.js";
+import { emit, fail, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
 import type { components, paths } from "../../types.js";
 
 type CreateMockRequest =
@@ -41,14 +41,16 @@ export function registerMockCreateCommand(mock: Command) {
       const outCtx = resolveOutputContext(opts);
 
       if (!opts.api && !opts.apiId) {
-        exit(ExitCode.USAGE, "Provide --api <name> or --api-id <uuid>.");
+        fail(outCtx, ExitCode.USAGE, "Provide --api <name> or --api-id <uuid>.");
       }
 
       let authCtx;
       try {
         authCtx = requireOrgContext(opts.org);
       } catch (e) {
-        exit(ExitCode.AUTH_MISSING, (e as Error).message);
+        fail(outCtx, ExitCode.AUTH_MISSING, (e as Error).message, {
+          hint: "Set SPEC0_TOKEN + SPEC0_ORG_ID, or run 'spec0 auth login'.",
+        });
       }
 
       const client = createOrgApiClient(authCtx);
@@ -74,9 +76,11 @@ export function registerMockCreateCommand(mock: Command) {
         emit(outCtx, result, renderCreateText);
       } catch (err) {
         if (is401(err)) {
-          exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
+          fail(outCtx, ExitCode.AUTH_MISSING, "Token invalid or expired.", {
+            hint: "Run 'spec0 auth login' or refresh SPEC0_TOKEN.",
+          });
         }
-        exit(ExitCode.GENERIC, `mock create failed: ${(err as Error).message}`);
+        fail(outCtx, ExitCode.GENERIC, `mock create failed: ${(err as Error).message}`);
       }
     });
 }

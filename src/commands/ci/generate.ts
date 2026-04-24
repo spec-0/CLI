@@ -12,9 +12,10 @@ import { dirname, resolve } from "node:path";
 import chalk from "chalk";
 import { createOrgApiClient, is401 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
-import { ExitCode, exit } from "../../lib/exit-codes.js";
+import { ExitCode } from "../../lib/exit-codes.js";
 import {
   emit,
+  fail,
   progress,
   resolveOutputContext,
   type OutputOptions,
@@ -48,14 +49,18 @@ export function registerCiGenerateCommand(ci: Command) {
         const outCtx = resolveOutputContext(opts);
 
         if (provider.toLowerCase() !== "github") {
-          exit(ExitCode.USAGE, `Unsupported CI provider '${provider}'. Supported: github.`);
+          fail(outCtx, ExitCode.USAGE, `Unsupported CI provider '${provider}'.`, {
+            hint: "Supported providers: github.",
+          });
         }
 
         let authCtx;
         try {
           authCtx = requireOrgContext(opts.org);
         } catch (e) {
-          exit(ExitCode.AUTH_MISSING, (e as Error).message);
+          fail(outCtx, ExitCode.AUTH_MISSING, (e as Error).message, {
+            hint: "Set SPEC0_TOKEN + SPEC0_ORG_ID, or run 'spec0 auth login'.",
+          });
         }
 
         const params = new URLSearchParams({
@@ -89,9 +94,11 @@ export function registerCiGenerateCommand(ci: Command) {
           }
         } catch (err) {
           if (is401(err)) {
-            exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
+            fail(outCtx, ExitCode.AUTH_MISSING, "Token invalid or expired.", {
+              hint: "Run 'spec0 auth login' or refresh SPEC0_TOKEN.",
+            });
           }
-          exit(ExitCode.GENERIC, `ci generate failed: ${(err as Error).message}`);
+          fail(outCtx, ExitCode.GENERIC, `ci generate failed: ${(err as Error).message}`);
         }
       },
     );

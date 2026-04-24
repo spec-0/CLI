@@ -7,8 +7,8 @@
 import { Command } from "commander";
 import { createOrgApiClient, is401 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
-import { ExitCode, exit } from "../../lib/exit-codes.js";
-import { emit, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
+import { ExitCode } from "../../lib/exit-codes.js";
+import { emit, fail, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
 import { renderTable } from "../../lib/output/table.js";
 import type { MockItem } from "./create.js";
 
@@ -25,7 +25,9 @@ export function registerMockListCommand(mock: Command) {
       try {
         authCtx = requireOrgContext(opts.org);
       } catch (e) {
-        exit(ExitCode.AUTH_MISSING, (e as Error).message);
+        fail(outCtx, ExitCode.AUTH_MISSING, (e as Error).message, {
+          hint: "Set SPEC0_TOKEN + SPEC0_ORG_ID, or run 'spec0 auth login'.",
+        });
       }
 
       const client = createOrgApiClient(authCtx);
@@ -45,9 +47,11 @@ export function registerMockListCommand(mock: Command) {
         );
       } catch (err) {
         if (is401(err)) {
-          exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
+          fail(outCtx, ExitCode.AUTH_MISSING, "Token invalid or expired.", {
+            hint: "Run 'spec0 auth login' or refresh SPEC0_TOKEN.",
+          });
         }
-        exit(ExitCode.GENERIC, `mock list failed: ${(err as Error).message}`);
+        fail(outCtx, ExitCode.GENERIC, `mock list failed: ${(err as Error).message}`);
       }
     });
 }

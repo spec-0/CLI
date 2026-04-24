@@ -12,6 +12,7 @@
  */
 
 import { stringify as yamlStringify } from "yaml";
+import { ExitCode, exitCodeName, type ExitCodeValue } from "../exit-codes.js";
 
 export type OutputFormat = "text" | "json" | "yaml";
 
@@ -78,6 +79,58 @@ export function emit<T>(ctx: OutputContext, data: T, textRenderer: (data: T) => 
     return;
   }
   process.stdout.write(textRenderer(data) + "\n");
+}
+
+export interface FailOptions {
+  /** Short actionable hint ("Set SPEC0_TOKEN", "Run 'spec0 auth login'"). */
+  hint?: string;
+  /** Additional context the caller wants surfaced in the structured payload. */
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Single structured failure point. Companions `emit()` — same output contract:
+ *
+ *   - In text mode: writes `message` (and hint, if given) to stderr. Matches
+ *     what the bare `exit(code, message)` helper produces, so human UX is
+ *     unchanged.
+ *   - In json / yaml mode: emits `{error: {code, message, hint?, details?}}`
+ *     on **stdout** so agents see one machine-readable document per invocation
+ *     regardless of success vs failure. The `code` field uses the symbolic
+ *     name ("AUTH_MISSING", "NOT_FOUND", …) from exit-codes.ts.
+ *
+ * Always exits with the numeric exit code — callers can rely on `never`.
+ */
+export function fail(
+  ctx: OutputContext,
+  code: ExitCodeValue,
+  message: string,
+  opts: FailOptions = {},
+): never {
+  if (ctx.format === "json" || ctx.format === "yaml") {
+    const payload = {
+      error: {
+        code: exitCodeName(code),
+        message,
+        ...(opts.hint ? { hint: opts.hint } : {}),
+        ...(opts.details ? { details: opts.details } : {}),
+      },
+    };
+    if (ctx.format === "json") {
+      process.stdout.write(JSON.stringify(payload, null, ctx.isTTY ? 2 : 0) + "\n");
+    } else {
+      process.stdout.write(yamlStringify(payload));
+    }
+  } else {
+    const tail = opts.hint ? `${message}\n  ${opts.hint}` : message;
+    process.stderr.write(tail.endsWith("\n") ? tail : `${tail}\n`);
+  }
+  process.exit(code);
+}
+
+/** Guard against accidental use of GENERIC in fail(); callers should pick a specific code. */
+export function failGeneric(ctx: OutputContext, message: string, opts?: FailOptions): never {
+  return fail(ctx, ExitCode.GENERIC, message, opts);
 }
 
 /** Progress / status — only printed when not `--quiet`. Always to stderr. */
