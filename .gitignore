@@ -2,3 +2,5 @@ node_modules/
 dist/
 test/.jest-home/
 *.log
+*.tgz
+.DS_Store

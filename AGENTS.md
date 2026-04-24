@@ -43,10 +43,12 @@ Or `npm run cli -- <args>` (runs `node dist/index.js`).
 
 ## Platform URLs
 
-- **`PLATFORM_APP_URL`** — Web app: **browser auth** (`spec0 auth login` → `/cli-auth`) and **register output links** to the dashboard (`specUrl`). Not used for REST calls.
-- **`PLATFORM_API_URL`** — Spring backend: **every** programmatic HTTP call (register, pull, mocks, lint, search, …). Stored as `org.apiUrl` on login.
+- **`SPEC0_APP_URL`** — Web app: **browser auth** (`spec0 auth login` → `/cli-auth`) and **register output links** to the dashboard (`specUrl`). Not used for REST calls.
+- **`SPEC0_API_URL`** — Spring backend: **every** programmatic HTTP call (register, pull, mocks, lint, search, …). Stored as `org.apiUrl` on login.
 
-Defaults in `src/lib/platform-defaults.ts`. **`PLATFORM_API_URL` in the environment overrides** stored `apiUrl` for all commands (see `src/lib/auth-context.ts`). Re-login to persist a new API base in `~/.spec0/config.json`.
+Defaults in `src/lib/platform-defaults.ts`. **`SPEC0_API_URL` in the environment overrides** stored `apiUrl` for all commands (see `src/lib/auth-context.ts`). Re-login to persist a new API base in `~/.spec0/config.json`.
+
+Legacy `PLATFORM_*` variants are still accepted for backwards compatibility; they will be removed in the next major.
 
 ## API clients
 
@@ -63,7 +65,3 @@ npm run sync:spec
 That runs `spec0 pull spec0/cli-api -o openapi-spec/cli-api-spec.yaml` and regenerates `src/types.ts`. Commit the updated YAML + types alongside the feature that consumes them.
 
 `sync:spec` calls into `dist/index.js`, so run `npm run build` first on fresh clones. Auth via `SPEC0_TOKEN` + `SPEC0_ORG_ID` env vars, or `spec0 auth login` for interactive use.
-
-## Product OS
-
-Feature and backlog tracking for Spec0 lives in **api-govern-os**; sync substantive product or CLI surface changes there when applicable.

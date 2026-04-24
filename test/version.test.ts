@@ -16,9 +16,7 @@ describe("version", () => {
 
   it("getVersionInfo includes node and optional git ref from SPEC0_CLI_GIT_REF", () => {
     const prevSpec0 = process.env.SPEC0_CLI_GIT_REF;
-    const prevLegacy = process.env.WINSPECT_CLI_GIT_REF;
     delete process.env.SPEC0_CLI_GIT_REF;
-    delete process.env.WINSPECT_CLI_GIT_REF;
     const plain = getVersionInfo();
     expect(plain.node).toBe(process.version);
     expect(plain.gitRef).toBeUndefined();
@@ -27,14 +25,8 @@ describe("version", () => {
     const withRef = getVersionInfo();
     expect(withRef.gitRef).toBe("feature/x");
 
-    delete process.env.SPEC0_CLI_GIT_REF;
-    process.env.WINSPECT_CLI_GIT_REF = "legacy-branch";
-    expect(getVersionInfo().gitRef).toBe("legacy-branch");
-
     if (prevSpec0 !== undefined) process.env.SPEC0_CLI_GIT_REF = prevSpec0;
     else delete process.env.SPEC0_CLI_GIT_REF;
-    if (prevLegacy !== undefined) process.env.WINSPECT_CLI_GIT_REF = prevLegacy;
-    else delete process.env.WINSPECT_CLI_GIT_REF;
   });
 
   it("dist CLI prints version (requires build)", () => {
@@ -44,7 +36,6 @@ describe("version", () => {
       env: {
         ...process.env,
         SPEC0_CLI_GIT_REF: "",
-        WINSPECT_CLI_GIT_REF: "",
       },
     });
     expect(out).toMatch(/@spec0\/cli/);
