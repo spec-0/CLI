@@ -12,7 +12,7 @@ export interface BreakingChange {
 
 export async function detectBreakingChanges(
   _oldSpecPath: string,
-  _newSpecPath: string
+  _newSpecPath: string,
 ): Promise<BreakingChange[]> {
   // Client-side: would shell out to oasdiff or use npm oasdiff
   // For scaffold, return empty

@@ -78,10 +78,10 @@ spec0 register
 
 **Two different origins:**
 
-| Variable | Used for | Default (if unset) |
-|----------|----------|---------------------|
-| **`PLATFORM_APP_URL`** | **Auth only** (browser): base URL for `spec0 auth login` → `/cli-auth`. Also used for **optional dashboard links** printed by `spec0 register` (`specUrl` — opens the API in the UI; not an HTTP call to the backend). | `http://localhost:3000` |
-| **`PLATFORM_API_URL`** | **All backend traffic**: register, pull, mock, lint, search, registry, and any other CLI HTTP to Spring. Stored in config on login as the API base. | `http://localhost:8080/api-management` |
+| Variable               | Used for                                                                                                                                                                                                               | Default (if unset)                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| **`PLATFORM_APP_URL`** | **Auth only** (browser): base URL for `spec0 auth login` → `/cli-auth`. Also used for **optional dashboard links** printed by `spec0 register` (`specUrl` — opens the API in the UI; not an HTTP call to the backend). | `http://localhost:3000`                |
+| **`PLATFORM_API_URL`** | **All backend traffic**: register, pull, mock, lint, search, registry, and any other CLI HTTP to Spring. Stored in config on login as the API base.                                                                    | `http://localhost:8080/api-management` |
 
 Do **not** point `PLATFORM_API_URL` at the Next.js dev server (`:3000`) — e.g. `POST …/discovery/spec-records/sync` must go to the **API**. Match **`NEXT_PUBLIC_API_BASE_URL`** from `api-management-ui` (often includes `/api-management` when Spring uses that servlet context path).
 

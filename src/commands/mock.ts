@@ -44,7 +44,7 @@ export function registerMockCommands(program: Command) {
       try {
         const res = (await client.postJson(
           "/api-management/cli/v1/mocks",
-          body
+          body,
         )) as CreateMockResponse;
         const base = ctx.apiUrl;
         const fullUrl = `${base}${res.mockBaseUrl ?? ""}`;
@@ -119,5 +119,4 @@ export function registerMockCommands(program: Command) {
       }
       console.log(`${ctx.apiUrl}${hit.mockBaseUrl ?? ""}`);
     });
-
 }

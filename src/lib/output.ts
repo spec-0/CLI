@@ -70,7 +70,10 @@ export function formatPublishText(output: {
     lines.push("");
     lines.push(
       chalk.yellow("⚠ ") +
-        chalk.yellow(output.versionUnchangedHint ?? `Spec changed but version is still ${output.version}. Pass --semver to auto-bump.`)
+        chalk.yellow(
+          output.versionUnchangedHint ??
+            `Spec changed but version is still ${output.version}. Pass --semver to auto-bump.`,
+        ),
     );
   }
 
@@ -81,7 +84,7 @@ export function formatGitHubAnnotation(
   file: string,
   line: number,
   level: "error" | "warning",
-  message: string
+  message: string,
 ): string {
   return `::${level} file=${file},line=${line}::${message.replace(/\n/g, "%0A")}`;
 }

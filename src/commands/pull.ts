@@ -13,7 +13,7 @@ export function registerPullCommand(program: Command) {
   program
     .command("pull <ref>")
     .description(
-      "Download spec from registry (e.g. acme/order-service or acme/order-service@v1.2.0)"
+      "Download spec from registry (e.g. acme/order-service or acme/order-service@v1.2.0)",
     )
     .option("-o, --output <file>", "Write to file instead of stdout")
     .option("--public", "Reserved for public registry (same endpoint when API is public)")

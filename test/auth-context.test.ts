@@ -2,9 +2,20 @@ import { getOrgConfig, setOrgConfig, setDefaultOrg, clearConfig } from "../src/l
 import { resolveOrgContext, requireOrgContext } from "../src/lib/auth-context.js";
 
 const ORG_ID = "test-org-authctx";
-const BASE_ORG = { apiKey: "stored-key", name: "Test Org", apiUrl: "https://api.spec0.io/api-management" };
+const BASE_ORG = {
+  apiKey: "stored-key",
+  name: "Test Org",
+  apiUrl: "https://api.spec0.io/api-management",
+};
 
-const ENV_VARS = ["SPEC0_TOKEN", "SPEC0_ORG_ID", "SPEC0_API_URL", "PLATFORM_API_TOKEN", "PLATFORM_ORG_ID", "PLATFORM_API_URL"] as const;
+const ENV_VARS = [
+  "SPEC0_TOKEN",
+  "SPEC0_ORG_ID",
+  "SPEC0_API_URL",
+  "PLATFORM_API_TOKEN",
+  "PLATFORM_ORG_ID",
+  "PLATFORM_API_URL",
+] as const;
 const saved = Object.fromEntries(ENV_VARS.map((k) => [k, process.env[k]]));
 
 function clearEnv() {

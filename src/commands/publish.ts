@@ -82,14 +82,14 @@ export function registerPublishCommand(program: Command) {
   program
     .command("publish")
     .description(
-      "Publish an API spec to the public registry (org-scoped, shareable URL, no team required)"
+      "Publish an API spec to the public registry (org-scoped, shareable URL, no team required)",
     )
     .argument("[spec-file]", "Path to OpenAPI spec (or use --spec-file / global --spec-file)")
     .option("--spec-file <path>", "Path to OpenAPI spec file")
     .option("--public-api-id <id>", "Existing public API ID to update")
     .option(
       "--name <slug>",
-      "URL-safe API slug (e.g. payments-api). Inferred from spec info.title if omitted."
+      "URL-safe API slug (e.g. payments-api). Inferred from spec info.title if omitted.",
     )
     .option("--title <title>", "Human-readable display title. Defaults to --name if omitted.")
     .option("--description <text>", "Short description of the API")
@@ -97,7 +97,7 @@ export function registerPublishCommand(program: Command) {
     .option(
       "--visibility <state>",
       "Visibility: draft | published | unlisted (default: published)",
-      "published"
+      "published",
     )
     .option("--release-notes <text>", "Release notes for this version")
     .option("--git-sha <sha>", "Git commit SHA for provenance")
@@ -110,21 +110,21 @@ export function registerPublishCommand(program: Command) {
       async (
         specArg: string | undefined,
         opts: Record<string, string | boolean>,
-        command: Command
+        command: Command,
       ) => {
         const cwd = process.cwd();
         const specPath = resolveCliSpecPathFromFlags(
           command,
           cwd,
           opts.specFile as string | undefined,
-          specArg
+          specArg,
         );
 
         if (!specPath || !existsSync(specPath)) {
           console.error(
             chalk.red(
-              "Spec file not found. Pass a path via --spec-file, global spec0 --spec-file, or positional [spec-file].\n"
-            )
+              "Spec file not found. Pass a path via --spec-file, global spec0 --spec-file, or positional [spec-file].\n",
+            ),
           );
           console.error(chalk.yellow(publishUsageExamples()));
           process.exit(1);
@@ -146,7 +146,9 @@ export function registerPublishCommand(program: Command) {
         const validVisibilities = ["draft", "published", "unlisted"];
         if (!validVisibilities.includes(visibilityRaw.toLowerCase())) {
           console.error(
-            chalk.red(`Invalid --visibility '${visibilityRaw}'. Must be: draft | published | unlisted.`)
+            chalk.red(
+              `Invalid --visibility '${visibilityRaw}'. Must be: draft | published | unlisted.`,
+            ),
           );
           process.exit(1);
         }
@@ -177,8 +179,8 @@ export function registerPublishCommand(program: Command) {
           console.error(
             chalk.red(
               `--name is required (or provide --public-api-id to update existing). ` +
-                `Use a slug like 'payments-api' (lowercase letters, digits, hyphens).\n`
-            )
+                `Use a slug like 'payments-api' (lowercase letters, digits, hyphens).\n`,
+            ),
           );
           console.error(chalk.yellow(publishUsageExamples()));
           process.exit(1);
@@ -235,8 +237,8 @@ export function registerPublishCommand(program: Command) {
         if (opts.dryRun) {
           console.log(
             chalk.green(
-              `Dry run — would publish apiSlug=${apiSlug ?? "-"} version=${version} visibility=${visibility}`
-            )
+              `Dry run — would publish apiSlug=${apiSlug ?? "-"} version=${version} visibility=${visibility}`,
+            ),
           );
           return;
         }
@@ -261,7 +263,7 @@ export function registerPublishCommand(program: Command) {
         try {
           const reg = (await client.postJson(
             "/api-management/cli/v1/public-publish",
-            body
+            body,
           )) as PublicPublishResponse;
 
           spinner.stop();
@@ -284,8 +286,8 @@ export function registerPublishCommand(program: Command) {
                   publicUrl: `${apiBaseUrl}${resolvedPublicUrl}`,
                 },
                 null,
-                2
-              )
+                2,
+              ),
             );
           } else {
             console.log(
@@ -295,7 +297,7 @@ export function registerPublishCommand(program: Command) {
                 visibility: reg.visibility ?? visibility,
                 publicUrl: resolvedPublicUrl,
                 apiUrl: apiBaseUrl,
-              })
+              }),
             );
           }
         } catch (err) {
@@ -315,21 +317,21 @@ export function registerPublishCommand(program: Command) {
           if (statusCode === 409) {
             console.error(
               chalk.red(
-                `Version conflict: version tag '${version}' already exists with different content.`
-              )
+                `Version conflict: version tag '${version}' already exists with different content.`,
+              ),
             );
             console.error(chalk.yellow("Use a new version tag (e.g. bump the patch version)."));
             process.exit(1);
           }
           const msg =
-            (err as { response?: { body?: { detail?: string } }; message?: string })?.response
-              ?.body?.detail ??
+            (err as { response?: { body?: { detail?: string } }; message?: string })?.response?.body
+              ?.detail ??
             (err as Error).message ??
             String(err);
           console.error(chalk.red(`Publish failed: ${msg}\n`));
           console.error(chalk.yellow(publishUsageExamples()));
           process.exit(1);
         }
-      }
+      },
     );
 }

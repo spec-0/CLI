@@ -56,7 +56,10 @@ function nameFromSpecPath(specPath: string): string | null {
   const ext = extname(base);
   const stem = ext ? base.slice(0, -ext.length) : base;
   // Only return if it already looks like a valid slug
-  const slug = stem.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const slug = stem
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   return slug || null;
 }
 
@@ -75,21 +78,19 @@ async function runPush(
   cmdName: string,
   specArg: string | undefined,
   opts: Record<string, string | boolean>,
-  command: Command
+  command: Command,
 ) {
   const cwd = process.cwd();
   const specPath = resolveCliSpecPathFromFlags(
     command,
     cwd,
     opts.specFile as string | undefined,
-    specArg
+    specArg,
   );
 
   if (!specPath || !existsSync(specPath)) {
     console.error(
-      chalk.red(
-        "Spec file not found. Pass a path as the first argument or via --spec-file.\n"
-      )
+      chalk.red("Spec file not found. Pass a path as the first argument or via --spec-file.\n"),
     );
     console.error(chalk.yellow(usageExamples(cmdName)));
     process.exit(1);
@@ -114,11 +115,7 @@ async function runPush(
   // --name > basename(specFilePath) — never from info.title
   const resolvedName = nameOpt?.trim() ?? nameFromSpecPath(specPath);
   if (!apiId && !resolvedName) {
-    console.error(
-      chalk.red(
-        "Cannot derive API name from spec path. Use --name payment-api.\n"
-      )
-    );
+    console.error(chalk.red("Cannot derive API name from spec path. Use --name payment-api.\n"));
     console.error(chalk.yellow(usageExamples(cmdName)));
     process.exit(1);
   }
@@ -206,8 +203,8 @@ async function runPush(
   if (dryRun) {
     console.log(
       chalk.green(
-        `Dry run — would push: name=${resolvedName ?? apiId ?? "new"} team=${team ?? "(unassigned)"} version=${versionOpt ?? "(from spec)"} sha=${gitSha ? gitSha.slice(0, 8) + "…" : "none"}`
-      )
+        `Dry run — would push: name=${resolvedName ?? apiId ?? "new"} team=${team ?? "(unassigned)"} version=${versionOpt ?? "(from spec)"} sha=${gitSha ? gitSha.slice(0, 8) + "…" : "none"}`,
+      ),
     );
     return;
   }
@@ -228,19 +225,21 @@ async function runPush(
   };
 
   vLog(`POST ${ctx.apiUrl}/api-management/cli/v1/publish`);
-  vLog(`payload: name=${resolvedName} team=${team ?? "(unassigned)"} version=${versionOpt ?? "(from spec)"} sha=${gitSha ? gitSha.slice(0, 8) + "…" : "none"} semver=${semver}`);
+  vLog(
+    `payload: name=${resolvedName} team=${team ?? "(unassigned)"} version=${versionOpt ?? "(from spec)"} sha=${gitSha ? gitSha.slice(0, 8) + "…" : "none"} semver=${semver}`,
+  );
 
   const pushSpinner = ora("Pushing…").start();
   try {
     const reg = (await client.postJson(
       "/api-management/cli/v1/publish",
-      body
+      body,
     )) as CliPublishResponse;
 
     pushSpinner.stop();
 
     vLog(
-      `response: apiId=${reg.apiId} apiName=${reg.apiName ?? "-"} version=${reg.version ?? "-"} created=${reg.created} noChanges=${reg.noChanges} versionUnchanged=${reg.versionUnchanged}`
+      `response: apiId=${reg.apiId} apiName=${reg.apiName ?? "-"} version=${reg.version ?? "-"} created=${reg.created} noChanges=${reg.noChanges} versionUnchanged=${reg.versionUnchanged}`,
     );
 
     const resolvedApiId = reg.apiId ?? "";
@@ -280,8 +279,8 @@ async function runPush(
             mockUrl: mockUrl ?? null,
           },
           null,
-          2
-        )
+          2,
+        ),
       );
     } else {
       console.log(
@@ -297,7 +296,7 @@ async function runPush(
           versionUnchanged: reg.versionUnchanged,
           versionUnchangedHint: reg.versionUnchangedHint,
           created: reg.created,
-        })
+        }),
       );
     }
   } catch (err) {
@@ -309,9 +308,13 @@ async function runPush(
           ? (errBody as Record<string, unknown>)["error"]
           : undefined;
       if (errCode === "API_KEY_EXPIRED") {
-        console.error(chalk.red("Your API key has expired. Run 'spec0 auth login' to re-authenticate."));
+        console.error(
+          chalk.red("Your API key has expired. Run 'spec0 auth login' to re-authenticate."),
+        );
       } else {
-        console.error(chalk.red("Authentication failed. Run 'spec0 auth login' to re-authenticate."));
+        console.error(
+          chalk.red("Authentication failed. Run 'spec0 auth login' to re-authenticate."),
+        );
       }
       process.exit(1);
     }
@@ -352,4 +355,3 @@ export function registerPushCommand(program: Command) {
       await runPush("push", specArg, opts, command);
     });
 }
-

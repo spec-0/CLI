@@ -55,7 +55,11 @@ describe("formatPublishText", () => {
   });
 
   it("versionUnchanged — shows custom hint when provided", () => {
-    const out = formatPublishText({ ...base, versionUnchanged: true, versionUnchangedHint: "Custom hint here" });
+    const out = formatPublishText({
+      ...base,
+      versionUnchanged: true,
+      versionUnchangedHint: "Custom hint here",
+    });
     expect(out).toContain("Custom hint here");
   });
 });

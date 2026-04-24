@@ -30,11 +30,7 @@ export function isNewer(candidate: string, current: string): boolean {
 }
 
 function shouldSkip(): boolean {
-  return !!(
-    process.env.CI ||
-    process.env.GITHUB_ACTIONS ||
-    !process.stdout.isTTY
-  );
+  return !!(process.env.CI || process.env.GITHUB_ACTIONS || !process.stdout.isTTY);
 }
 
 /**
@@ -54,7 +50,7 @@ export function notifyUpdateIfAvailable(currentVersion: string): void {
         chalk.gray(`  Run `) +
         chalk.cyan(`npm install -g @spec0/cli`) +
         chalk.gray(` to update\n`) +
-        "\n"
+        "\n",
     );
   }
 

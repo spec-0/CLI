@@ -19,7 +19,9 @@ export interface Spec0Config {
   orgs: Record<string, OrgConfig>;
 }
 
-const schema = {
+// Schema kept for documentation; not currently passed to Conf (defaults below
+// are sufficient). Renamed `_schema` to satisfy lint while retaining intent.
+const _schema = {
   version: { type: "number", default: 1 },
   defaultOrg: { type: ["string", "null"], default: null },
   telemetry: { type: "boolean", default: true },

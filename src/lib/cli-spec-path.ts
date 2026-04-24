@@ -10,7 +10,7 @@ export function resolveCliSpecPathFromFlags(
   command: Command,
   cwd: string,
   subcommandSpecFile: string | undefined,
-  positional: string | undefined
+  positional: string | undefined,
 ): string | null {
   const fromSub = subcommandSpecFile?.trim();
   const root = command.parent?.opts() as { specFile?: string } | undefined;
@@ -37,8 +37,8 @@ export function resolveCliSpecPathFromFlags(
     if (resolvedAbs[i] !== firstAbs) {
       console.error(
         chalk.red(
-          "Conflicting spec paths: use only one of --spec-file, spec0 --spec-file, or the positional [spec-file], and ensure they refer to the same file."
-        )
+          "Conflicting spec paths: use only one of --spec-file, spec0 --spec-file, or the positional [spec-file], and ensure they refer to the same file.",
+        ),
       );
       process.exit(1);
     }
