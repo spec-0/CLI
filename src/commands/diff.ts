@@ -9,6 +9,7 @@ import { createTwoFilesPatch } from "diff";
 import { createOrgApiClient, is401, extractErrorMessage } from "../lib/api-client.js";
 import { requireOrgContext, type ResolvedOrgContext } from "../lib/auth-context.js";
 import { resolveRef } from "../lib/ref-resolver.js";
+import { ExitCode, exit, exitCodeForHttpStatus } from "../lib/exit-codes.js";
 
 interface SpecDiffResponse {
   hasBreakingChanges: boolean;
@@ -77,7 +78,7 @@ export function registerDiffCommand(program: Command) {
         ctx = requireOrgContext(opts.org);
       } catch (e) {
         console.error(chalk.red((e as Error).message));
-        process.exit(1);
+        exit(ExitCode.AUTH_MISSING);
       }
 
       let left: string;
@@ -88,10 +89,11 @@ export function registerDiffCommand(program: Command) {
       } catch (err) {
         if (is401(err)) {
           console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
-          process.exit(1);
+          exit(ExitCode.AUTH_MISSING);
         }
+        const status = (err as { response?: { statusCode?: number } })?.response?.statusCode;
         console.error(chalk.red(`Failed to load spec: ${(err as Error).message}`));
-        process.exit(1);
+        exit(status ? exitCodeForHttpStatus(status) : ExitCode.GENERIC);
       }
 
       if (opts.breakingOnly) {
@@ -100,11 +102,12 @@ export function registerDiffCommand(program: Command) {
         } catch (err) {
           if (is401(err)) {
             console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
-            process.exit(1);
+            exit(ExitCode.AUTH_MISSING);
           }
+          const status = (err as { response?: { statusCode?: number } })?.response?.statusCode;
           const msg = extractErrorMessage(err) ?? (err as Error).message;
           console.error(chalk.red(`Breaking change check failed: ${msg}`));
-          process.exit(1);
+          exit(status ? exitCodeForHttpStatus(status) : ExitCode.GENERIC);
         }
         return;
       }

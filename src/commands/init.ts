@@ -9,6 +9,7 @@ import { getTeamFromCodeowners } from "../lib/codeowners.js";
 import { writeFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
+import { ExitCode, exit } from "../lib/exit-codes.js";
 
 export function registerInitCommand(program: Command) {
   program
@@ -23,7 +24,7 @@ export function registerInitCommand(program: Command) {
         console.error(
           chalk.red("No OpenAPI spec found. Add openapi.yaml, openapi.json, or swagger.yaml"),
         );
-        process.exit(1);
+        exit(ExitCode.USAGE);
       }
       const specName = specPath.split("/").pop() ?? "openapi.yaml";
       const team = getTeamFromCodeowners(cwd, specPath);
@@ -62,7 +63,7 @@ export function registerInitCommand(program: Command) {
           execSync("spec0 push", { stdio: "inherit", cwd });
         } catch {
           console.error(chalk.red("Push failed. Run 'spec0 push' manually."));
-          process.exit(1);
+          exit(ExitCode.GENERIC);
         }
       } else {
         console.log(chalk.blue("Run 'spec0 push' to upload your spec (or use --push)."));
