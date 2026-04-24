@@ -46,6 +46,14 @@
   ],
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spec-0/CLI.git"
+  },
+  "bugs": {
+    "url": "https://github.com/spec-0/CLI/issues"
+  },
+  "homepage": "https://github.com/spec-0/CLI#readme",
   "dependencies": {
     "@inquirer/prompts": "^7.2.0",
     "@stoplight/spectral-core": "^1.22.0",
