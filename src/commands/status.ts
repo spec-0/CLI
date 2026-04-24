@@ -43,9 +43,7 @@ export function registerStatusCommand(program: Command) {
 
       const client = createOrgApiClient(ctx);
       try {
-        const summary = (await client.getJson(
-          "/api-management/cli/v1/org-summary"
-        )) as OrgSummary;
+        const summary = (await client.getJson("/api-management/cli/v1/org-summary")) as OrgSummary;
         const mocks = (await client.getJson("/api-management/cli/v1/mocks")) as MockRow[];
 
         if (opts.json) {
@@ -58,8 +56,8 @@ export function registerStatusCommand(program: Command) {
                 mocks,
               },
               null,
-              2
-            )
+              2,
+            ),
           );
           return;
         }
@@ -72,7 +70,7 @@ export function registerStatusCommand(program: Command) {
           `  APIs:         ${summary.apiCount ?? "—"}\n` +
             `  Mock servers: ${summary.mockServerCount ?? mocks.length}\n` +
             `  Teams:        ${summary.teamCount ?? "—"}\n` +
-            `  Plan:         ${summary.plan ?? "—"}`
+            `  Plan:         ${summary.plan ?? "—"}`,
         );
 
         if (mocks.length > 0) {
@@ -82,11 +80,7 @@ export function registerStatusCommand(program: Command) {
             style: { head: ["cyan"] },
           });
           for (const m of mocks) {
-            table.push([
-              m.apiName ?? m.apiId ?? "—",
-              m.name ?? "—",
-              m.mockBaseUrl ?? "—",
-            ]);
+            table.push([m.apiName ?? m.apiId ?? "—", m.name ?? "—", m.mockBaseUrl ?? "—"]);
           }
           console.log(table.toString());
         }

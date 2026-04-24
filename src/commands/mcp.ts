@@ -25,14 +25,20 @@ export function registerMcpCommands(program: Command) {
       console.log(`  ${mcpUrl}`);
       console.log("");
       console.log("Add to Cursor settings:");
-      console.log(JSON.stringify({
-        mcpServers: {
-          spec0: {
-            url: mcpUrl,
-            apiKey: org.apiKey,
+      console.log(
+        JSON.stringify(
+          {
+            mcpServers: {
+              spec0: {
+                url: mcpUrl,
+                apiKey: org.apiKey,
+              },
+            },
           },
-        },
-      }, null, 2));
+          null,
+          2,
+        ),
+      );
     });
 
   mcp

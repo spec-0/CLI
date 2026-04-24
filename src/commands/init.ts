@@ -20,7 +20,9 @@ export function registerInitCommand(program: Command) {
       const cwd = process.cwd();
       const specPath = findSpecInDir(cwd);
       if (!specPath) {
-        console.error(chalk.red("No OpenAPI spec found. Add openapi.yaml, openapi.json, or swagger.yaml"));
+        console.error(
+          chalk.red("No OpenAPI spec found. Add openapi.yaml, openapi.json, or swagger.yaml"),
+        );
         process.exit(1);
       }
       const specName = specPath.split("/").pop() ?? "openapi.yaml";

@@ -38,9 +38,7 @@ export function resolveOrgContext(optionsOrgId?: string): ResolvedOrgContext | n
   if (!orgId) return null;
   const org = getOrgConfig(orgId);
   if (!org) return null;
-  const storedApi = org.apiUrl?.trim()
-    ? org.apiUrl.replace(/\/$/, "")
-    : resolvedPlatformApiUrl();
+  const storedApi = org.apiUrl?.trim() ? org.apiUrl.replace(/\/$/, "") : resolvedPlatformApiUrl();
   const apiUrl = envApi?.trim() ? envApi.trim().replace(/\/$/, "") : storedApi;
   return {
     orgId,
@@ -54,7 +52,7 @@ export function requireOrgContext(optionsOrgId?: string): ResolvedOrgContext {
   const ctx = resolveOrgContext(optionsOrgId);
   if (!ctx) {
     throw new Error(
-      "Not authenticated. Run 'spec0 auth login' to log in, or set SPEC0_TOKEN and SPEC0_ORG_ID environment variables."
+      "Not authenticated. Run 'spec0 auth login' to log in, or set SPEC0_TOKEN and SPEC0_ORG_ID environment variables.",
     );
   }
   return ctx;

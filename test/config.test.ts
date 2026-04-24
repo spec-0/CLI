@@ -1,4 +1,10 @@
-import { getConfig, setOrgConfig, setDefaultOrg, clearConfig, getOrgConfig } from "../src/lib/config.js";
+import {
+  getConfig,
+  setOrgConfig,
+  setDefaultOrg,
+  clearConfig,
+  getOrgConfig,
+} from "../src/lib/config.js";
 
 describe("config", () => {
   const testOrgId = "test-org-" + Date.now();

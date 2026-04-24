@@ -34,16 +34,13 @@ async function breakingChangesViaBackend(
   leftContent: string,
   rightContent: string,
   leftLabel: string,
-  rightLabel: string
+  rightLabel: string,
 ): Promise<void> {
   const client = createOrgApiClient(ctx);
-  const result = await client.postMultipart<SpecDiffResponse>(
-    "/api-management/cli/v1/diff",
-    {
-      base: { content: leftContent, filename: leftLabel },
-      revision: { content: rightContent, filename: rightLabel },
-    }
-  );
+  const result = await client.postMultipart<SpecDiffResponse>("/api-management/cli/v1/diff", {
+    base: { content: leftContent, filename: leftLabel },
+    revision: { content: rightContent, filename: rightLabel },
+  });
 
   if (!result.hasBreakingChanges) {
     console.log(chalk.green("No breaking changes detected."));
@@ -65,61 +62,55 @@ export function registerDiffCommand(program: Command) {
   program
     .command("diff")
     .description(
-      "Diff two specs: each side is a file path or registry ref org/api[@tag] (latest if tag omitted)"
+      "Diff two specs: each side is a file path or registry ref org/api[@tag] (latest if tag omitted)",
     )
     .argument("<a>", "Left: local path or org/api[@tag]")
     .argument("<b>", "Right: local path or org/api[@tag]")
     .option("--breaking-only", "Show breaking changes only (via backend oasdiff service)")
     .option("--org <uuid>", "Org id override for registry fetches")
-    .action(
-      async (
-        a: string,
-        b: string,
-        opts: { breakingOnly?: boolean; org?: string }
-      ) => {
-        let ctx;
-        try {
-          ctx = requireOrgContext(opts.org);
-        } catch (e) {
-          console.error(chalk.red((e as Error).message));
+    .action(async (a: string, b: string, opts: { breakingOnly?: boolean; org?: string }) => {
+      let ctx;
+      try {
+        ctx = requireOrgContext(opts.org);
+      } catch (e) {
+        console.error(chalk.red((e as Error).message));
+        process.exit(1);
+      }
+
+      let left: string;
+      let right: string;
+      try {
+        left = await loadSpecContent(a, ctx);
+        right = await loadSpecContent(b, ctx);
+      } catch (err) {
+        if (is401(err)) {
+          console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
           process.exit(1);
         }
+        console.error(chalk.red(`Failed to load spec: ${(err as Error).message}`));
+        process.exit(1);
+      }
 
-        let left: string;
-        let right: string;
+      if (opts.breakingOnly) {
         try {
-          left = await loadSpecContent(a, ctx);
-          right = await loadSpecContent(b, ctx);
+          await breakingChangesViaBackend(ctx, left, right, a, b);
         } catch (err) {
           if (is401(err)) {
             console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
             process.exit(1);
           }
-          console.error(chalk.red(`Failed to load spec: ${(err as Error).message}`));
+          const msg = extractErrorMessage(err) ?? (err as Error).message;
+          console.error(chalk.red(`Breaking change check failed: ${msg}`));
           process.exit(1);
         }
-
-        if (opts.breakingOnly) {
-          try {
-            await breakingChangesViaBackend(ctx, left, right, a, b);
-          } catch (err) {
-            if (is401(err)) {
-              console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
-              process.exit(1);
-            }
-            const msg = extractErrorMessage(err) ?? (err as Error).message;
-            console.error(chalk.red(`Breaking change check failed: ${msg}`));
-            process.exit(1);
-          }
-          return;
-        }
-
-        const patch = createTwoFilesPatch(a, b, left, right, "", "", { context: 3 });
-        if (!patch.trim()) {
-          console.log(chalk.green("No textual differences."));
-          return;
-        }
-        process.stdout.write(patch);
+        return;
       }
-    );
+
+      const patch = createTwoFilesPatch(a, b, left, right, "", "", { context: 3 });
+      if (!patch.trim()) {
+        console.log(chalk.green("No textual differences."));
+        return;
+      }
+      process.stdout.write(patch);
+    });
 }

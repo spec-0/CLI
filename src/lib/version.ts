@@ -36,9 +36,7 @@ export function getCliVersion(): string {
 export function getVersionInfo(): VersionInfo {
   const { name, version } = readPackageVersion();
   const gitRef =
-    process.env.SPEC0_CLI_GIT_REF?.trim() ||
-    process.env.WINSPECT_CLI_GIT_REF?.trim() ||
-    undefined;
+    process.env.SPEC0_CLI_GIT_REF?.trim() || process.env.WINSPECT_CLI_GIT_REF?.trim() || undefined;
   return {
     name,
     version,

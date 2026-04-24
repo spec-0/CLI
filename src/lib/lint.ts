@@ -19,7 +19,7 @@ export async function runSpectral(specPath: string, rulesetPath?: string): Promi
     try {
       // Spectral 6+: load custom ruleset file (YAML/JSON)
       await (spectral as unknown as { loadRuleset: (p: string) => Promise<void> }).loadRuleset(
-        rulesetPath
+        rulesetPath,
       );
     } catch {
       spectral.setRuleset(oas as Parameters<typeof spectral.setRuleset>[0]);

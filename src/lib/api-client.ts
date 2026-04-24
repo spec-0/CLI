@@ -84,14 +84,18 @@ export function createOrgApiClient(ctx: ResolvedOrgContext) {
     },
     async getText(path: string, headers?: Record<string, string>): Promise<string> {
       const res = await got.get(`${baseUrl}${path}`, {
-        headers: { ...baseHeaders, Accept: "application/yaml, application/json, text/plain, */*", ...headers },
+        headers: {
+          ...baseHeaders,
+          Accept: "application/yaml, application/json, text/plain, */*",
+          ...headers,
+        },
       });
       return res.body;
     },
     async postJson<T = unknown>(
       path: string,
       body: unknown,
-      headers?: Record<string, string>
+      headers?: Record<string, string>,
     ): Promise<T> {
       const res = await got.post(`${baseUrl}${path}`, {
         json: body,
@@ -108,7 +112,7 @@ export function createOrgApiClient(ctx: ResolvedOrgContext) {
     async postMultipart<T = unknown>(
       path: string,
       fields: Record<string, { content: Buffer | string; filename: string }>,
-      headers?: Record<string, string>
+      headers?: Record<string, string>,
     ): Promise<T> {
       const form = new FormData();
       for (const [name, { content, filename }] of Object.entries(fields)) {

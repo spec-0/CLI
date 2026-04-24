@@ -70,58 +70,61 @@ export function registerAuthCommands(program: Command) {
       console.log(chalk.blue("Opening browser for authentication..."));
       console.log(chalk.gray(`If the browser doesn't open, visit: ${authUrl.toString()}`));
 
-      const result = await new Promise<{ token: string; orgId: string; orgName: string } | { error: string }>(
-        (resolve) => {
-          let resolved = false;
-          const doResolve = (r: { token: string; orgId: string; orgName: string } | { error: string }) => {
-            if (resolved) return;
-            resolved = true;
-            resolve(r);
-          };
+      const result = await new Promise<
+        { token: string; orgId: string; orgName: string } | { error: string }
+      >((resolve) => {
+        let resolved = false;
+        const doResolve = (
+          r: { token: string; orgId: string; orgName: string } | { error: string },
+        ) => {
+          if (resolved) return;
+          resolved = true;
+          resolve(r);
+        };
 
-          const server = createServer((req, res) => {
-            const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
-            if (url.pathname === "/callback") {
-              const token = url.searchParams.get("token");
-              const orgId = url.searchParams.get("org");
-              const orgName = url.searchParams.get("org_name") ?? "default";
-              if (token && orgId) {
-                res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-                res.end(
-                  `<!DOCTYPE html><html><head><title>Spec0 CLI</title></head><body><p style="font-family:sans-serif;padding:2rem;">Authorization complete. You can close this window and return to the terminal.</p></body></html>`
-                );
-                doResolve({ token, orgId, orgName });
-              } else {
-                res.writeHead(400, { "Content-Type": "text/plain" });
-                res.end("Missing token or org. Please try again.");
-                doResolve({ error: "Missing token or org" });
-              }
+        const server = createServer((req, res) => {
+          const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
+          if (url.pathname === "/callback") {
+            const token = url.searchParams.get("token");
+            const orgId = url.searchParams.get("org");
+            const orgName = url.searchParams.get("org_name") ?? "default";
+            if (token && orgId) {
+              res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+              res.end(
+                `<!DOCTYPE html><html><head><title>Spec0 CLI</title></head><body><p style="font-family:sans-serif;padding:2rem;">Authorization complete. You can close this window and return to the terminal.</p></body></html>`,
+              );
+              doResolve({ token, orgId, orgName });
             } else {
-              res.writeHead(404);
-              res.end();
+              res.writeHead(400, { "Content-Type": "text/plain" });
+              res.end("Missing token or org. Please try again.");
+              doResolve({ error: "Missing token or org" });
             }
+          } else {
+            res.writeHead(404);
+            res.end();
+          }
+          server.close();
+        });
+
+        server.listen(port, "127.0.0.1", () => {
+          open(authUrl.toString()).catch(() => {});
+        });
+
+        server.on("error", (err) => {
+          doResolve({ error: err.message });
+        });
+
+        const timeout = setTimeout(() => {
+          if (!resolved && server.listening) {
             server.close();
-          });
-
-          server.listen(port, "127.0.0.1", () => {
-            open(authUrl.toString()).catch(() => {});
-          });
-
-          server.on("error", (err) => {
-            doResolve({ error: err.message });
-          });
-
-          const timeout = setTimeout(() => {
-            if (!resolved && server.listening) {
-              server.close();
-              doResolve({
-                error: "Login timed out. Run 'spec0 auth login' again, or set SPEC0_TOKEN and SPEC0_ORG_ID for non-interactive use.",
-              });
-            }
-          }, 120000);
-          server.on("close", () => clearTimeout(timeout));
-        }
-      );
+            doResolve({
+              error:
+                "Login timed out. Run 'spec0 auth login' again, or set SPEC0_TOKEN and SPEC0_ORG_ID for non-interactive use.",
+            });
+          }
+        }, 120000);
+        server.on("close", () => clearTimeout(timeout));
+      });
 
       if ("error" in result) {
         console.error(chalk.red(result.error));
@@ -129,7 +132,9 @@ export function registerAuthCommands(program: Command) {
       }
 
       const keyName = `CLI — ${new Date().toISOString().slice(0, 10)}`;
-      const apiUrlForStore = opts.apiUrl?.trim() ? opts.apiUrl.trim().replace(/\/$/, "") : getApiUrl();
+      const apiUrlForStore = opts.apiUrl?.trim()
+        ? opts.apiUrl.trim().replace(/\/$/, "")
+        : getApiUrl();
       setOrgConfig(result.orgId, {
         apiKey: result.token,
         name: result.orgName,
