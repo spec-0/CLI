@@ -363,6 +363,26 @@ test("api show without ref exits non-zero (commander missing argument)", () => {
   assert(r.status !== 0, `Expected non-zero exit, got ${r.status}`);
 });
 
+test("api changelog --help mentions --from and --to", () => {
+  const r = run(["api", "changelog", "--help"]);
+  const out = r.stdout + r.stderr;
+  assert(out.includes("--from"), "api changelog missing --from");
+  assert(out.includes("--to"), "api changelog missing --to");
+});
+
+test("api changelog without auth exits 3 (AUTH_MISSING)", () => {
+  const r = run(["api", "changelog", "acme/orders"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 const total = passed + failed;

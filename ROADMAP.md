@@ -17,11 +17,11 @@ Goal: every API-management operation available in the spec0 web app should be sc
 
 ### P0 — API management from CI (headline)
 
-- `spec0 api list` — catalogue view, filters by team / status / search.
-- `spec0 api show <ref>` — single-API summary.
-- `spec0 api changelog <ref>` — newest-first, `--since`, `--format`.
-- `spec0 api update <ref> [--name|--description|--status]` — partial updates.
-- `spec0 api delete <ref>` — soft delete, `--confirm` or `--yes`.
+- `spec0 api list` — catalogue view, filters by team / status / search. ✅ shipped.
+- `spec0 api show <ref>` — single-API summary. ✅ shipped.
+- `spec0 api changelog <ref>` — diff between published versions. ✅ shipped.
+- `spec0 api update <ref> [--name|--description|--status]` — partial updates. **Blocked**: backend needs a JSON `PATCH /apis/{id}` for metadata-only changes (the existing `PUT /apis/{id}` is multipart and requires a spec file).
+- `spec0 api delete <ref>` — soft delete. **Blocked**: backend needs `DELETE /api-management/cli/v1/apis/{id}` exposed in the CLI surface.
 
 ### P1 — Teams, permissions, environments
 
