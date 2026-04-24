@@ -5,7 +5,7 @@ import { registerAuthCommands } from "./commands/auth.js";
 import { registerInitCommand } from "./commands/init.js";
 import { registerPublishCommand } from "./commands/publish.js";
 import { registerPushCommand } from "./commands/push.js";
-import { registerMockCommands } from "./commands/mock.js";
+import { registerMockCommands } from "./commands/mock/index.js";
 import { registerLintCommand } from "./commands/lint.js";
 import { registerPullCommand } from "./commands/pull.js";
 import { registerSearchCommand } from "./commands/search.js";
