@@ -9,8 +9,8 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { createOrgApiClient, is401 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
-import { ExitCode, exit } from "../../lib/exit-codes.js";
-import { emit, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
+import { ExitCode } from "../../lib/exit-codes.js";
+import { emit, fail, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
 import { resolveRef, resolveApiId } from "../../lib/ref-resolver.js";
 import { getDefaultOrgId, getOrgConfig } from "../../lib/config.js";
 
@@ -50,7 +50,9 @@ export function registerApiShowCommand(api: Command) {
       try {
         authCtx = requireOrgContext(opts.org);
       } catch (e) {
-        exit(ExitCode.AUTH_MISSING, (e as Error).message);
+        fail(outCtx, ExitCode.AUTH_MISSING, (e as Error).message, {
+          hint: "Set SPEC0_TOKEN + SPEC0_ORG_ID, or run 'spec0 auth login'.",
+        });
       }
 
       const defaultOrg = (() => {
@@ -62,7 +64,7 @@ export function registerApiShowCommand(api: Command) {
       try {
         parsed = resolveRef(ref, { defaultOrg });
       } catch (e) {
-        exit(ExitCode.USAGE, (e as Error).message);
+        fail(outCtx, ExitCode.USAGE, (e as Error).message);
       }
 
       const client = createOrgApiClient(authCtx);
@@ -70,18 +72,23 @@ export function registerApiShowCommand(api: Command) {
         const apiId = await resolveApiId(client, parsed);
         const res = (await client.getJson(`/apis/${apiId}/summary`)) as ApiSummaryResponse;
         if (!res.api) {
-          exit(ExitCode.NOT_FOUND, `No API found for ref '${ref}'.`);
+          fail(outCtx, ExitCode.NOT_FOUND, `No API found for ref '${ref}'.`, {
+            hint: "Run 'spec0 api list' to see what exists in this org.",
+          });
         }
         emit(outCtx, res.api, renderApiShowText);
       } catch (err) {
         if (is401(err)) {
-          exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
+          fail(outCtx, ExitCode.AUTH_MISSING, "Token invalid or expired.", {
+            hint: "Run 'spec0 auth login' or refresh SPEC0_TOKEN.",
+          });
         }
-        // resolveApiId throws on missing name lookup with a useful message.
         if ((err as Error).message?.includes("No API named")) {
-          exit(ExitCode.NOT_FOUND, (err as Error).message);
+          fail(outCtx, ExitCode.NOT_FOUND, (err as Error).message, {
+            hint: "Run 'spec0 api list' to see what exists in this org.",
+          });
         }
-        exit(ExitCode.GENERIC, `api show failed: ${(err as Error).message}`);
+        fail(outCtx, ExitCode.GENERIC, `api show failed: ${(err as Error).message}`);
       }
     });
 }

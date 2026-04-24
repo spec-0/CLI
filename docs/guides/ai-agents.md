@@ -93,7 +93,30 @@ Pass credentials via env, never on the command line:
 SPEC0_TOKEN=... SPEC0_ORG_ID=... spec0 publish openapi.yaml --semver --output=json
 ```
 
-## Step 4 — react to exit codes
+## Step 4 — parse structured errors
+
+When a command fails with `--output=json` (or `yaml`), the error arrives on
+**stdout** as a structured payload — the same pipe contract as the success
+case. This keeps your parser simple: one JSON document per invocation.
+
+```json
+{
+  "error": {
+    "code": "AUTH_MISSING",
+    "message": "Not authenticated. …",
+    "hint": "Set SPEC0_TOKEN + SPEC0_ORG_ID, or run 'spec0 auth login'."
+  }
+}
+```
+
+The `code` field uses the symbolic exit-code name (`AUTH_MISSING`,
+`NOT_FOUND`, `USAGE`, etc.) so you don't need to memorise the numeric
+mapping. The numeric exit code is still set — both are reliable signals.
+
+In text mode (no `--output` flag), errors stay where humans expect them:
+plain message on stderr, empty stdout.
+
+## Step 5 — react to exit codes
 
 Branch on the exit code, not on stderr substring matching:
 
@@ -110,7 +133,7 @@ Branch on the exit code, not on stderr substring matching:
 | `9`  | Platform server error. One retry is fine; two is noise.                                                             |
 | `10` | Network unreachable. Retry with backoff; if persistent, the platform is probably down.                              |
 
-## Step 5 — close the loop
+## Step 6 — close the loop
 
 After a mutation, verify:
 

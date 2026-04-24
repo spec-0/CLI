@@ -594,6 +594,97 @@ test("commands <pattern> filters by substring", () => {
   }
 });
 
+// ── structured error payloads (for AI agents) ────────────────────────────────
+
+section("structured errors in --output=json");
+
+function parseErrorJson(stdout, cmd) {
+  try {
+    return JSON.parse(stdout);
+  } catch {
+    throw new Error(`[${cmd}] expected JSON error on stdout, got: ${stdout.slice(0, 200)}`);
+  }
+}
+
+test("api list --output=json on auth failure emits {error:{code:AUTH_MISSING}}", () => {
+  const r = run(["api", "list", "--output=json"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+  const parsed = parseErrorJson(r.stdout, "api list");
+  assert(parsed.error, "missing .error field");
+  assert(
+    parsed.error.code === "AUTH_MISSING",
+    `expected code=AUTH_MISSING, got ${parsed.error.code}`,
+  );
+  assert(typeof parsed.error.message === "string", "missing .error.message");
+  assert(typeof parsed.error.hint === "string", "missing .error.hint");
+});
+
+test("sync-status --output=json USAGE error emits structured payload", () => {
+  const r = run(["sync-status", "--git-sha", "abc", "--output=json"], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  assert(r.status === 2, `Expected exit 2 (USAGE), got ${r.status}`);
+  const parsed = parseErrorJson(r.stdout, "sync-status");
+  assert(parsed.error.code === "USAGE", `expected code=USAGE, got ${parsed.error.code}`);
+});
+
+test("ci generate gitlab --output=json emits USAGE error with hint", () => {
+  const r = run(["ci", "generate", "gitlab", "--output=json"], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  assert(r.status === 2, `Expected exit 2 (USAGE), got ${r.status}`);
+  const parsed = parseErrorJson(r.stdout, "ci generate");
+  assert(parsed.error.code === "USAGE", `expected code=USAGE, got ${parsed.error.code}`);
+  assert(parsed.error.hint?.includes("github"), "hint should mention supported provider");
+});
+
+test("mock create --output=json missing --api emits USAGE", () => {
+  const r = run(["mock", "create", "--output=json"], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  assert(r.status === 2, `Expected exit 2 (USAGE), got ${r.status}`);
+  const parsed = parseErrorJson(r.stdout, "mock create");
+  assert(parsed.error.code === "USAGE", `expected code=USAGE, got ${parsed.error.code}`);
+});
+
+test("mock show --output=json without auth emits AUTH_MISSING", () => {
+  const r = run(["mock", "show", "foo", "--output=json"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+  const parsed = parseErrorJson(r.stdout, "mock show");
+  assert(parsed.error.code === "AUTH_MISSING", `expected AUTH_MISSING, got ${parsed.error.code}`);
+});
+
+test("text mode still prints errors to stderr (not stdout)", () => {
+  const r = run(["api", "list"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `exit ${r.status}`);
+  assert(r.stdout.trim() === "", `stdout should be empty in text-mode error, got: ${r.stdout}`);
+  assert(r.stderr.includes("Not authenticated"), "stderr should have error message");
+});
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 const total = passed + failed;

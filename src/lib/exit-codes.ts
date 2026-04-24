@@ -61,3 +61,15 @@ export function exit(code: ExitCodeValue, message?: string): never {
   }
   process.exit(code);
 }
+
+/**
+ * Reverse-lookup: turn a numeric exit code into its stable string name
+ * ("AUTH_MISSING", "NOT_FOUND", …). Used when emitting structured errors
+ * so agents can branch on the symbolic code rather than the number.
+ */
+export function exitCodeName(code: ExitCodeValue): ExitCodeName {
+  for (const [name, value] of Object.entries(ExitCode) as [ExitCodeName, ExitCodeValue][]) {
+    if (value === code) return name;
+  }
+  return "GENERIC";
+}

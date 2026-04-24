@@ -18,6 +18,11 @@ module.exports = {
   testEnvironment: "node",
   roots: ["<rootDir>/test"],
   testMatch: ["**/*.test.ts"],
+  // Serialise across test files. config.test.ts and auth-context.test.ts both
+  // talk to the same `conf`-backed JSON file under $HOME; with parallel Jest
+  // workers on CI they race and fail intermittently. Suite is tiny (~1 s), so
+  // the parallelism saving is negligible and determinism wins.
+  maxWorkers: 1,
   moduleFileExtensions: ["ts", "js"],
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"],
   extensionsToTreatAsEsm: [".ts"],

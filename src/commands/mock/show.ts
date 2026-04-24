@@ -9,8 +9,8 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { createOrgApiClient, is401 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
-import { ExitCode, exit } from "../../lib/exit-codes.js";
-import { emit, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
+import { ExitCode } from "../../lib/exit-codes.js";
+import { emit, fail, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
 import type { MockItem } from "./create.js";
 
 interface MockShowResult {
@@ -34,7 +34,9 @@ export function registerMockShowCommand(mock: Command) {
       try {
         authCtx = requireOrgContext(opts.org);
       } catch (e) {
-        exit(ExitCode.AUTH_MISSING, (e as Error).message);
+        fail(outCtx, ExitCode.AUTH_MISSING, (e as Error).message, {
+          hint: "Set SPEC0_TOKEN + SPEC0_ORG_ID, or run 'spec0 auth login'.",
+        });
       }
 
       const client = createOrgApiClient(authCtx);
@@ -46,7 +48,9 @@ export function registerMockShowCommand(mock: Command) {
             (r.apiName ?? "").toLowerCase() === needle || (r.apiId ?? "").toLowerCase() === needle,
         );
         if (!hit) {
-          exit(ExitCode.NOT_FOUND, `No mock server found for '${api}'.`);
+          fail(outCtx, ExitCode.NOT_FOUND, `No mock server found for '${api}'.`, {
+            hint: "Run 'spec0 mock list' to see existing mocks, or 'spec0 mock create --api <name>' to provision one.",
+          });
         }
 
         const result: MockShowResult = {
@@ -60,9 +64,11 @@ export function registerMockShowCommand(mock: Command) {
         emit(outCtx, result, renderShowText);
       } catch (err) {
         if (is401(err)) {
-          exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
+          fail(outCtx, ExitCode.AUTH_MISSING, "Token invalid or expired.", {
+            hint: "Run 'spec0 auth login' or refresh SPEC0_TOKEN.",
+          });
         }
-        exit(ExitCode.GENERIC, `mock show failed: ${(err as Error).message}`);
+        fail(outCtx, ExitCode.GENERIC, `mock show failed: ${(err as Error).message}`);
       }
     });
 }
