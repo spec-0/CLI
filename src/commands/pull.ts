@@ -7,7 +7,8 @@ import chalk from "chalk";
 import { writeFileSync } from "fs";
 import { createOrgApiClient, is401 } from "../lib/api-client.js";
 import { requireOrgContext } from "../lib/auth-context.js";
-import { parseRegistryRef } from "../lib/registry-ref.js";
+import { resolveRef } from "../lib/ref-resolver.js";
+import { ExitCode, exit } from "../lib/exit-codes.js";
 
 export function registerPullCommand(program: Command) {
   program
@@ -19,20 +20,12 @@ export function registerPullCommand(program: Command) {
     .option("--public", "Reserved for public registry (same endpoint when API is public)")
     .option("--org <uuid>", "Auth org id (defaults to logged-in org)")
     .action(async (ref: string, opts: { output?: string; public?: boolean; org?: string }) => {
-      let parsed;
-      try {
-        parsed = parseRegistryRef(ref);
-      } catch (e) {
-        console.error(chalk.red((e as Error).message));
-        process.exit(1);
-      }
-
+      const parsed = resolveRefForPull(ref);
       let ctx;
       try {
         ctx = requireOrgContext(opts.org);
       } catch (e) {
-        console.error(chalk.red((e as Error).message));
-        process.exit(1);
+        exit(ExitCode.AUTH_MISSING, (e as Error).message);
       }
 
       const client = createOrgApiClient(ctx);
@@ -50,11 +43,26 @@ export function registerPullCommand(program: Command) {
         }
       } catch (err) {
         if (is401(err)) {
-          console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
-          process.exit(1);
+          exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
         }
-        console.error(chalk.red(`Pull failed: ${(err as Error).message}`));
-        process.exit(1);
+        exit(ExitCode.GENERIC, `Pull failed: ${(err as Error).message}`);
       }
     });
+}
+
+/** Pull only accepts <org>/<api>[@<tag>]; UUIDs and bare names aren't useful. */
+function resolveRefForPull(ref: string): { org: string; api: string; tag?: string } {
+  let parsed;
+  try {
+    parsed = resolveRef(ref);
+  } catch (e) {
+    exit(ExitCode.USAGE, (e as Error).message);
+  }
+  if (parsed.kind !== "name" || !parsed.org) {
+    exit(
+      ExitCode.USAGE,
+      `Pull requires '<org>/<api>[@<tag>]'. Got '${ref}'. UUIDs aren't supported by the registry endpoint.`,
+    );
+  }
+  return { org: parsed.org, api: parsed.api, tag: parsed.tag };
 }
