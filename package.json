@@ -8,6 +8,7 @@
   },
   "scripts": {
     "generate:types": "openapi-typescript \"openapi-spec/cli-api-spec.yaml\" -o \"src/types.ts\"",
+    "sync:spec": "node dist/index.js pull spec0/cli-api -o openapi-spec/cli-api-spec.yaml && npm run generate:types",
     "build": "npm run generate:types && tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",

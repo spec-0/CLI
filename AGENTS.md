@@ -1,6 +1,6 @@
 # Agent notes — Spec0 CLI
 
-This repository is the **Node.js** CLI (`@spec0/cli`). There is also a legacy **Go** `spec0 resolve` binary in the same repo; do not confuse the two.
+This repository is the **Node.js** CLI (`@spec0/cli`).
 
 ## Environment
 
@@ -51,6 +51,18 @@ Defaults in `src/lib/platform-defaults.ts`. **`PLATFORM_API_URL` in the environm
 ## API clients
 
 Implementation lives under `src/` (Commander commands, `src/lib/*`). Follow existing patterns when adding HTTP calls or config.
+
+## Refreshing the vendored OpenAPI spec
+
+The CLI's own OpenAPI contract lives at `openapi-spec/cli-api-spec.yaml` and is published to the platform as `spec0/cli-api`. To refresh it after the backend surface changes:
+
+```bash
+npm run sync:spec
+```
+
+That runs `spec0 pull spec0/cli-api -o openapi-spec/cli-api-spec.yaml` and regenerates `src/types.ts`. Commit the updated YAML + types alongside the feature that consumes them.
+
+`sync:spec` calls into `dist/index.js`, so run `npm run build` first on fresh clones. Auth via `SPEC0_TOKEN` + `SPEC0_ORG_ID` env vars, or `spec0 auth login` for interactive use.
 
 ## Product OS
 

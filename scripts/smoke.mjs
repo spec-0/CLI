@@ -1,0 +1,321 @@
+#!/usr/bin/env node
+/**
+ * spec0 CLI smoke tests — run against the compiled dist/index.js.
+ *
+ * Usage:
+ *   npm run build && node scripts/smoke.mjs
+ *   npm run test:smoke
+ *
+ * Requires: Node 20+, dist/ to be up to date.
+ * Does NOT require authentication — all network calls are either skipped (lint) or expected to fail.
+ */
+
+import { spawnSync } from "node:child_process";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = resolve(__dirname, "..");
+const bin = resolve(root, "dist", "index.js");
+const validSpec = resolve(root, "test", "fixtures", "valid-spec.yaml");
+const invalidSpec = resolve(root, "test", "fixtures", "invalid-spec.yaml");
+
+// ── Runner ───────────────────────────────────────────────────────────────────
+
+let passed = 0;
+let failed = 0;
+
+function run(args, { env, input } = {}) {
+  return spawnSync("node", [bin, ...args], {
+    encoding: "utf-8",
+    cwd: root,
+    env: { ...process.env, NO_COLOR: "1", ...env },
+    input,
+    timeout: 15000,
+  });
+}
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+function test(name, fn) {
+  try {
+    fn();
+    console.log(`  ✓  ${name}`);
+    passed++;
+  } catch (err) {
+    console.error(`  ✗  ${name}`);
+    console.error(`     → ${err.message}`);
+    failed++;
+  }
+}
+
+function section(name) {
+  console.log(`\n${name}`);
+}
+
+// ── Pre-flight ───────────────────────────────────────────────────────────────
+
+if (!existsSync(bin)) {
+  console.error(`\nError: ${bin} not found. Run 'npm run build' first.\n`);
+  process.exit(1);
+}
+
+console.log(`\nSpec0 CLI smoke tests`);
+console.log(`Binary: ${bin}\n`);
+
+// ── Version / help ───────────────────────────────────────────────────────────
+
+section("Version & Help");
+
+test("--version exits 0 and prints a semver string", () => {
+  const r = run(["--version"]);
+  assert(r.status === 0, `exit ${r.status}: ${r.stderr}`);
+  assert(/\d+\.\d+\.\d+/.test(r.stdout.trim()), `Not semver: ${r.stdout.trim()}`);
+});
+
+test("--help exits 0", () => {
+  const r = run(["--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+});
+
+test("--help mentions core commands", () => {
+  const r = run(["--help"]);
+  const out = r.stdout + r.stderr;
+  for (const cmd of ["push", "publish", "lint", "mock", "auth", "whoami"]) {
+    assert(out.includes(cmd), `--help missing command: ${cmd}`);
+  }
+});
+
+test("--help does NOT mention removed 'register' command", () => {
+  const r = run(["--help"]);
+  const out = r.stdout + r.stderr;
+  assert(!out.includes("register"), `'register' still present in help output`);
+});
+
+test("--help does NOT have a 'team' command entry", () => {
+  const r = run(["--help"]);
+  const out = r.stdout + r.stderr;
+  // "team" may appear in descriptions (e.g. "team-scoped") but not as a top-level command
+  assert(!/^\s+team\s+/m.test(out), `'team' command still present as a command entry`);
+});
+
+// ── push ─────────────────────────────────────────────────────────────────────
+
+section("spec0 push");
+
+test("push --help exits 0", () => {
+  const r = run(["push", "--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+});
+
+test("push --help mentions --semver", () => {
+  const r = run(["push", "--help"]);
+  assert((r.stdout + r.stderr).includes("--semver"), "Missing --semver in push help");
+});
+
+test("push --help mentions --skip-lint", () => {
+  const r = run(["push", "--help"]);
+  assert((r.stdout + r.stderr).includes("--skip-lint"), "Missing --skip-lint in push help");
+});
+
+test("push with missing file exits 1", () => {
+  const r = run(["push", "nonexistent-spec.yaml"]);
+  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+});
+
+test("push with missing file shows actionable error", () => {
+  const r = run(["push", "nonexistent-spec.yaml"]);
+  const out = r.stdout + r.stderr;
+  assert(out.includes("not found") || out.includes("Spec file"), `Unexpected error: ${out}`);
+});
+
+test("push without auth exits 1 and references SPEC0_TOKEN", () => {
+  const r = run(["push", "--skip-lint", validSpec], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+  const out = r.stdout + r.stderr;
+  assert(out.includes("SPEC0_TOKEN") || out.includes("auth login"), `Error should mention SPEC0_TOKEN or auth login. Got: ${out}`);
+});
+
+test("push --dry-run with valid spec and SPEC0_TOKEN set exits 0", () => {
+  const r = run(["push", "--skip-lint", "--dry-run", validSpec], {
+    env: {
+      SPEC0_TOKEN: "fake-token-for-dry-run",
+      SPEC0_ORG_ID: "fake-org-id",
+    },
+  });
+  assert(r.status === 0, `Expected exit 0, got ${r.status}\n${r.stderr}`);
+});
+
+test("push --dry-run output mentions the spec file name", () => {
+  const r = run(["push", "--skip-lint", "--dry-run", validSpec], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  const out = r.stdout + r.stderr;
+  assert(out.includes("valid-spec") || out.includes("dry"), `Unexpected output: ${out}`);
+});
+
+test("push --format json --dry-run exits 0", () => {
+  const r = run(["push", "--skip-lint", "--dry-run", "--format", "json", validSpec], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  assert(r.status === 0, `exit ${r.status}\n${r.stderr}`);
+});
+
+// ── lint ─────────────────────────────────────────────────────────────────────
+
+section("spec0 lint");
+
+test("lint --help exits 0", () => {
+  const r = run(["lint", "--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+});
+
+test("lint valid spec exits 0", () => {
+  const r = run(["lint", validSpec]);
+  assert(r.status === 0, `exit ${r.status}\n${r.stderr}`);
+});
+
+test("lint valid spec shows score", () => {
+  const r = run(["lint", validSpec]);
+  const out = r.stdout + r.stderr;
+  assert(out.includes("/100"), `No score in output: ${out}`);
+});
+
+test("lint --format json outputs valid JSON", () => {
+  const r = run(["lint", "--format", "json", validSpec]);
+  assert(r.status === 0, `exit ${r.status}\n${r.stderr}`);
+  let parsed;
+  try {
+    parsed = JSON.parse(r.stdout);
+  } catch {
+    throw new Error(`Output is not valid JSON: ${r.stdout}`);
+  }
+  assert(typeof parsed.score === "number", "JSON output missing 'score'");
+  assert(Array.isArray(parsed.errors), "JSON output missing 'errors'");
+});
+
+test("lint missing file exits 1", () => {
+  const r = run(["lint", "no-such-file.yaml"]);
+  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+});
+
+// ── mock ─────────────────────────────────────────────────────────────────────
+
+section("spec0 mock");
+
+test("mock --help exits 0", () => {
+  const r = run(["mock", "--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+});
+
+test("mock --help shows only implemented subcommands", () => {
+  const r = run(["mock", "--help"]);
+  const out = r.stdout + r.stderr;
+  assert(out.includes("create"), "mock create missing");
+  assert(out.includes("list"), "mock list missing");
+  assert(out.includes("url"), "mock url missing");
+  assert(!out.includes("delete"), "'mock delete' stub should be removed");
+  assert(!out.includes("regenerate-key"), "'mock regenerate-key' stub should be removed");
+  assert(!out.includes("logs"), "'mock logs' stub should be removed");
+});
+
+test("mock list without auth exits 1", () => {
+  const r = run(["mock", "list"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+});
+
+// ── auth / whoami ─────────────────────────────────────────────────────────────
+
+section("spec0 auth & whoami");
+
+test("auth --help exits 0", () => {
+  const r = run(["auth", "--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+});
+
+test("auth status when not logged in exits 0 and shows guidance", () => {
+  const r = run(["auth", "status"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 0, `Expected exit 0, got ${r.status}`);
+  const out = r.stdout + r.stderr;
+  assert(out.toLowerCase().includes("not logged in") || out.includes("auth login"), `Unexpected output: ${out}`);
+});
+
+test("whoami when not logged in exits 0 and shows guidance", () => {
+  const r = run(["whoami"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 0, `Expected exit 0, got ${r.status}`);
+  const out = r.stdout + r.stderr;
+  assert(out.toLowerCase().includes("not logged in") || out.includes("auth login"), `Unexpected output: ${out}`);
+});
+
+test("auth status mentions SPEC0_TOKEN env var for CI guidance", () => {
+  const r = run(["auth", "status"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  const out = r.stdout + r.stderr;
+  assert(out.includes("SPEC0_TOKEN"), `Expected SPEC0_TOKEN mention. Got: ${out}`);
+});
+
+// ── SPEC0_* env var wiring ────────────────────────────────────────────────────
+
+section("SPEC0_* environment variables");
+
+test("SPEC0_TOKEN recognized — reaches auth step (not 'not authenticated')", () => {
+  const r = run(["push", "--skip-lint", validSpec], {
+    env: { SPEC0_TOKEN: "fake-token", SPEC0_ORG_ID: "fake-org" },
+  });
+  const out = r.stdout + r.stderr;
+  // Should fail with a network error (can't reach server), NOT an auth missing error
+  assert(!out.includes("Not authenticated"), `Should not say 'Not authenticated': ${out}`);
+  assert(!out.includes("Run 'spec0 auth login'"), `Should not prompt login when env vars are set: ${out}`);
+});
+
+// ── Summary ───────────────────────────────────────────────────────────────────
+
+const total = passed + failed;
+console.log(`\n${"─".repeat(50)}`);
+console.log(`${passed}/${total} tests passed${failed > 0 ? `, ${failed} failed` : ""}`);
+
+if (failed > 0) {
+  process.exit(1);
+}

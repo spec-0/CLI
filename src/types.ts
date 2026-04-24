@@ -62,6 +62,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api-management/cli/v1/sync-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check if spec needs republishing based on git SHA
+         * @description Returns whether the provided git SHA differs from the last published version's SHA.
+         *     Used in CI/CD to skip `publish` when the spec file has not changed.
+         */
+        get: operations["getSyncStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api-management/cli/v1/ci-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Generate a GitHub Actions workflow for spec0 publish
+         * @description Returns a ready-to-use GitHub Actions workflow YAML that runs `spec0 publish`
+         *     only when the specified spec file changes.
+         */
+        get: operations["generateCiConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api-management/cli/v1/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Diff two raw OpenAPI specs via the oasdiff service
+         * @description Accepts two spec files (YAML or JSON) as multipart/form-data and returns a
+         *     structured diff and breaking-change list from the oasdiff service.
+         *     Use this when diffing local files that are not yet in the registry.
+         */
+        post: operations["diffSpecs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api-management/cli/v1/versions/{apiId}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get changelog diff between two published spec versions */
+        get: operations["getVersionDiff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -98,29 +179,37 @@ export interface components {
         CliPublishRequest: {
             /**
              * Format: uuid
-             * @description Existing API id (backward compat). Prefer slug-based upsert via name.
+             * @description Existing API id. Deprecated in favour of slug-based upsert (name + org).
+             *     Still accepted for backward compatibility.
              */
             apiId?: string;
             /**
-             * @description API name (kebab-case). If omitted, derived from the basename of specFilePath.
-             *     Never derived from info.title — title is display metadata, not the API identity.
+             * @description API name (kebab-case). If omitted, derived from the basename of `specFilePath`
+             *     (e.g. `api/payment-api.yaml` → `payment-api`). Required if `specFilePath` is also omitted.
              */
             name?: string;
-            /** @description Team UUID or slug. If omitted, API lands in org's "Unassigned APIs" team. */
+            /** @description Team UUID OR team slug. If omitted, the API is placed in the org's "Unassigned APIs" team. */
             team?: string;
-            /** @description Semver version tag. If omitted, extracted from info.version in the spec. */
+            /**
+             * @description Semver version to publish (MAJOR.MINOR.PATCH). If omitted, the version is extracted
+             *     from `info.version` in the spec. If `semver` flag is set, this field is ignored.
+             */
             version?: string;
             /** @description OpenAPI document content (YAML or JSON). */
             openapiSpec: string;
-            /** @description Git commit SHA. Used as idempotency key — same SHA = no-op. */
+            /**
+             * @description Git commit SHA of the spec file. Used as the primary change detector.
+             *     If unchanged since last publish, the request is treated as a no-op.
+             */
             gitSha?: string;
             githubRepo?: string;
             githubBranch?: string;
-            /** @description Relative path to spec file. Used to derive API name if name is omitted. */
+            /** @description Path to the spec file in the repository. Used to derive API name if `name` is not provided. */
             specFilePath?: string;
             /**
-             * @description Auto-compute next version via oasdiff diff classification
-             *     (PATCH / NON_BREAKING / BREAKING).
+             * @description If true, the backend runs oasdiff to classify the change and auto-computes the next
+             *     semver tag (PATCH / NON_BREAKING / BREAKING). The computed version is stored in the
+             *     version snapshot; the developer's original file is never modified.
              * @default false
              */
             semver: boolean;
@@ -131,29 +220,72 @@ export interface components {
             /** Format: uuid */
             specRecordId?: string;
             version?: string;
-            /** @description True if a new API entity was created. */
+            /** @description True if a new API entity was created in this publish call. */
             created?: boolean;
             /** @description True if a new version snapshot was created. */
             versionCreated?: boolean;
-            /** @description True if git SHA matched — no changes detected, no-op. */
+            /** @description True if git SHA matched the last published SHA — no changes detected. */
             noChanges?: boolean;
-            /** @description Spec changed but version tag is the same as the stored HEAD. */
+            /**
+             * @description True when the spec changed (different git SHA) but `info.version` is the same as the
+             *     previously stored version. HEAD spec is still updated. Pass `--semver` to auto-bump.
+             */
             versionUnchanged?: boolean;
-            /** @description Human-readable hint for versionUnchanged case. */
+            /** @description Human-readable hint shown when `versionUnchanged` is true. */
             versionUnchangedHint?: string;
-            /** @description Resolved API name. */
+            /** @description Resolved API name (from --name flag or spec filename). */
             apiName?: string;
             /** @description Resolved team name. */
             teamName?: string;
             /** @description Organisation slug. */
             orgSlug?: string;
-            /** @description Canonical registry path (e.g. /registry/{orgSlug}/{apiName}). */
+            /** @description Canonical registry URL for this API (e.g. /registry/{orgSlug}/{apiName}). */
             registryUrl?: string;
         };
         Problem: {
             status?: number;
             title?: string;
             detail?: string;
+        };
+        SyncStatusResponse: {
+            /** @description True if the provided git SHA differs from (or is absent in) the last published version. */
+            needsPublish?: boolean;
+            /** @description The git SHA of the last published version, or null if none exists. */
+            lastPublishedSha?: string | null;
+            /** @description The version tag of the last published version. */
+            lastPublishedVersion?: string | null;
+            /** Format: uuid */
+            apiId?: string | null;
+        };
+        CiConfigResponse: {
+            /** @description Ready-to-use GitHub Actions workflow YAML. */
+            workflowYaml?: string;
+            /**
+             * @description Suggested file path for the workflow.
+             * @example .github/workflows/spec0-publish.yml
+             */
+            filePath?: string;
+        };
+        SpecDiffResponse: {
+            hasBreakingChanges?: boolean;
+            /** @description Structured changelog from oasdiff. */
+            changelog?: {
+                [key: string]: unknown;
+            };
+            breakingChanges?: {
+                [key: string]: unknown;
+            }[];
+        };
+        VersionDiffResponse: {
+            fromTag?: string;
+            toTag?: string;
+            /** @description Structured changelog from oasdiff. */
+            changelog?: {
+                [key: string]: unknown;
+            };
+            breakingChanges?: {
+                [key: string]: unknown;
+            }[];
         };
     };
     responses: never;
@@ -347,8 +479,179 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Version conflict */
+            /** @description Breaking change detected in same major version (only when oasdiff is enabled and --semver is not set) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error (bad semver or API name format) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getSyncStatus: {
+        parameters: {
+            query: {
+                apiId?: string;
+                name?: string;
+                gitSha: string;
+            };
+            header: {
+                "X-Org-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatusResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description API not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    generateCiConfig: {
+        parameters: {
+            query: {
+                /** @description API name to embed in the generated workflow (e.g. payment-api). Falls back to spec filename basename if omitted. */
+                apiName?: string;
+                specFilePath: string;
+                branch?: string;
+            };
+            header: {
+                "X-Org-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CI config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CiConfigResponse"];
+                };
+            };
+        };
+    };
+    diffSpecs: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Org-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description The old/base OpenAPI spec file
+                     */
+                    base: string;
+                    /**
+                     * Format: binary
+                     * @description The new/revised OpenAPI spec file
+                     */
+                    revision: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Diff result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecDiffResponse"];
+                };
+            };
+            /** @description oasdiff service unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getVersionDiff: {
+        parameters: {
+            query: {
+                fromTag: string;
+                toTag: string;
+            };
+            header: {
+                "X-Org-Id": string;
+            };
+            path: {
+                apiId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diff changelog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionDiffResponse"];
+                };
+            };
+            /** @description API or version not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description oasdiff service unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
