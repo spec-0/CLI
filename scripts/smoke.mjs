@@ -233,7 +233,7 @@ test("mock --help shows only implemented subcommands", () => {
   assert(!out.includes("logs"), "'mock logs' stub should be removed");
 });
 
-test("mock list without auth exits 1", () => {
+test("mock list without auth exits 3 (AUTH_MISSING)", () => {
   const r = run(["mock", "list"], {
     env: {
       SPEC0_TOKEN: "",
@@ -243,7 +243,7 @@ test("mock list without auth exits 1", () => {
       HOME: resolve(root, "test", ".jest-home"),
     },
   });
-  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
 });
 
 // ── auth / whoami ─────────────────────────────────────────────────────────────

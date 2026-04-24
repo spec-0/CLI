@@ -4,11 +4,14 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import Table from "cli-table3";
 import { createOrgApiClient, is401 } from "../lib/api-client.js";
 import { requireOrgContext } from "../lib/auth-context.js";
 import { getDefaultOrgId, getOrgConfig } from "../lib/config.js";
 import { parseRegistryRef } from "../lib/registry-ref.js";
+import { ExitCode, exit } from "../lib/exit-codes.js";
+import { emit, resolveOutputContext, type OutputOptions } from "../lib/output/index.js";
+import { renderTable } from "../lib/output/table.js";
+import { warnDeprecated } from "../lib/deprecation.js";
 
 interface VersionRow {
   tag?: string;
@@ -29,8 +32,18 @@ export function registerLogCommand(program: Command) {
       "--org-slug <slug>",
       "Organisation slug/name for registry path when api-ref has no slash (default: name from spec0 auth config)",
     )
-    .option("--json", "Print JSON array")
-    .action(async (apiRef: string, opts: { org?: string; orgSlug?: string; json?: boolean }) => {
+    .option("--output <format>", "Output format: text, json, or yaml (default: text)")
+    .option("--json", "Deprecated. Use --output=json instead.")
+    .action(async (apiRef: string, opts: OutputOptions & { org?: string; orgSlug?: string }) => {
+      if (opts.json) {
+        warnDeprecated({
+          what: "the --json flag on `spec0 log`",
+          removeIn: "v1.0.0",
+          alternative: "--output=json",
+        });
+      }
+      const outCtx = resolveOutputContext(opts);
+
       let orgSlug: string;
       let apiName: string;
       try {
@@ -44,62 +57,57 @@ export function registerLogCommand(program: Command) {
           const fallback = cfg?.name?.trim();
           orgSlug = (opts.orgSlug ?? fallback ?? "").trim();
           if (!orgSlug) {
-            console.error(
-              chalk.red("Set --org-slug <slug> or use org-slug/api-name, or run spec0 auth login."),
+            exit(
+              ExitCode.USAGE,
+              "Set --org-slug <slug> or use org-slug/api-name, or run 'spec0 auth login'.",
             );
-            process.exit(1);
           }
           apiName = apiRef.trim();
         }
       } catch (e) {
-        console.error(chalk.red((e as Error).message));
-        process.exit(1);
+        exit(ExitCode.USAGE, (e as Error).message);
       }
 
-      let ctx;
+      let authCtx;
       try {
-        ctx = requireOrgContext(opts.org);
+        authCtx = requireOrgContext(opts.org);
       } catch (e) {
-        console.error(chalk.red((e as Error).message));
-        process.exit(1);
+        exit(ExitCode.AUTH_MISSING, (e as Error).message);
       }
 
-      const client = createOrgApiClient(ctx);
+      const client = createOrgApiClient(authCtx);
       const path = `/registry/${encodeURIComponent(orgSlug)}/${encodeURIComponent(apiName)}/versions`;
 
       try {
         const rows = (await client.getJson(path)) as VersionRow[];
-        if (opts.json) {
-          console.log(JSON.stringify(rows, null, 2));
-          return;
-        }
-        if (!rows.length) {
-          console.log(chalk.yellow("No published versions found."));
-          return;
-        }
-        const table = new Table({
-          head: ["Tag", "Published", "Git SHA", "Breaking data"],
-          style: { head: ["cyan"] },
-        });
-        for (const r of rows) {
-          const br = r.breakingChangesRecorded ? "yes" : "—";
-          table.push([r.tag ?? "—", r.publishedAt ?? "—", (r.gitSha ?? "—").slice(0, 12), br]);
-        }
-        console.log(chalk.blue(`${orgSlug}/${apiName} version history:\n`));
-        console.log(table.toString());
-        for (const r of rows) {
-          if (r.breakingChangeSummary) {
-            const prev = (r.breakingChangeSummary ?? "").slice(0, 500);
-            console.log(chalk.gray(`\n${r.tag}: ${prev}${prev.length >= 500 ? "…" : ""}`));
-          }
-        }
+        emit(outCtx, rows, (data) => renderLogText(data, orgSlug, apiName));
       } catch (err) {
         if (is401(err)) {
-          console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
-          process.exit(1);
+          exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
         }
-        console.error(chalk.red(`Log failed: ${(err as Error).message}`));
-        process.exit(1);
+        exit(ExitCode.GENERIC, `Log failed: ${(err as Error).message}`);
       }
     });
+}
+
+function renderLogText(rows: VersionRow[], orgSlug: string, apiName: string): string {
+  if (!rows.length) return chalk.yellow("No published versions found.");
+  const table = renderTable(rows as unknown as Record<string, unknown>[], [
+    { key: "tag", header: "Tag" },
+    { key: "publishedAt", header: "Published" },
+    { key: "gitSha", header: "Git SHA", format: (v) => String(v ?? "—").slice(0, 12) },
+    {
+      key: "breakingChangesRecorded",
+      header: "Breaking",
+      format: (v) => (v ? "yes" : "—"),
+    },
+  ]);
+  const lines: string[] = [chalk.blue(`${orgSlug}/${apiName} version history:`), table];
+  for (const r of rows) {
+    if (r.breakingChangeSummary) {
+      const prev = (r.breakingChangeSummary ?? "").slice(0, 500);
+      lines.push("", chalk.gray(`${r.tag}: ${prev}${prev.length >= 500 ? "…" : ""}`));
+    }
+  }
+  return lines.join("\n");
 }
