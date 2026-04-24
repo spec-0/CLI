@@ -15,6 +15,7 @@ import { registerStatusCommand } from "./commands/status.js";
 import { registerMcpCommands } from "./commands/mcp.js";
 import { registerVersionCommand } from "./commands/version.js";
 import { registerApiCommands } from "./commands/api/index.js";
+import { registerDoctorCommand } from "./commands/doctor.js";
 import { getCliVersion } from "./lib/version.js";
 import { notifyUpdateIfAvailable } from "./lib/update-check.js";
 
@@ -40,6 +41,7 @@ registerLogCommand(program);
 registerStatusCommand(program);
 registerMcpCommands(program);
 registerApiCommands(program);
+registerDoctorCommand(program);
 
 notifyUpdateIfAvailable(getCliVersion());
 
