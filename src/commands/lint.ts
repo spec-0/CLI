@@ -13,6 +13,7 @@ import { runSpectral } from "../lib/lint.js";
 import { formatLintText, formatGitHubAnnotation } from "../lib/output.js";
 import { createOrgApiClient } from "../lib/api-client.js";
 import { requireOrgContext } from "../lib/auth-context.js";
+import { ExitCode, exit } from "../lib/exit-codes.js";
 import type { paths } from "../types.js";
 
 type SpectralRulesetResponse =
@@ -51,7 +52,7 @@ export function registerLintCommand(program: Command) {
           findSpecInDir(cwd);
         if (!specPath || !existsSync(specPath)) {
           console.error(chalk.red("Spec file not found."));
-          process.exit(1);
+          exit(ExitCode.USAGE);
         }
 
         let rulesetFile = opts.ruleset as string | undefined;
@@ -73,7 +74,7 @@ export function registerLintCommand(program: Command) {
             }
           } catch (e) {
             console.error(chalk.red((e as Error).message));
-            process.exit(1);
+            exit(ExitCode.AUTH_MISSING);
           }
         }
 
@@ -94,9 +95,9 @@ export function registerLintCommand(program: Command) {
         }
 
         const minScore = parseInt(String(opts.minScore ?? "0"), 10);
-        if (result.score < minScore) process.exit(1);
-        if (opts.strict === true && result.warnings.length > 0) process.exit(1);
-        if (result.errors.length > 0) process.exit(1);
+        if (result.score < minScore) exit(ExitCode.VALIDATION);
+        if (opts.strict === true && result.warnings.length > 0) exit(ExitCode.VALIDATION);
+        if (result.errors.length > 0) exit(ExitCode.VALIDATION);
       },
     );
 }
@@ -104,7 +105,7 @@ export function registerLintCommand(program: Command) {
 async function uploadRuleset(filePath: string): Promise<void> {
   if (!existsSync(filePath)) {
     console.error(chalk.red(`Ruleset file not found: ${filePath}`));
-    process.exit(1);
+    exit(ExitCode.USAGE);
   }
   const rulesetYaml = readFileSync(filePath, "utf-8");
   let ctx;
@@ -112,7 +113,7 @@ async function uploadRuleset(filePath: string): Promise<void> {
     ctx = requireOrgContext();
   } catch (e) {
     console.error(chalk.red((e as Error).message));
-    process.exit(1);
+    exit(ExitCode.AUTH_MISSING);
   }
   const client = createOrgApiClient(ctx);
   try {
@@ -120,6 +121,6 @@ async function uploadRuleset(filePath: string): Promise<void> {
     console.log(chalk.green(`✓ uploaded ${filePath} as the org's Spectral ruleset`));
   } catch (err) {
     console.error(chalk.red(`Failed to upload ruleset: ${(err as Error).message}`));
-    process.exit(1);
+    exit(ExitCode.GENERIC);
   }
 }

@@ -15,6 +15,7 @@ import { runSpectral } from "../lib/lint.js";
 import { formatLintText, formatGitHubAnnotation } from "../lib/output.js";
 import { createOrgApiClient, is401, is402 } from "../lib/api-client.js";
 import { requireOrgContext } from "../lib/auth-context.js";
+import { ExitCode, exit, exitCodeForHttpStatus } from "../lib/exit-codes.js";
 import { resolveCliSpecPathFromFlags } from "../lib/cli-spec-path.js";
 import { resolvedPlatformApiUrl } from "../lib/platform-defaults.js";
 
@@ -127,7 +128,7 @@ export function registerPublishCommand(program: Command) {
             ),
           );
           console.error(chalk.yellow(publishUsageExamples()));
-          process.exit(1);
+          exit(ExitCode.USAGE);
         }
 
         const publicApiId = opts["publicApiId"] as string | undefined;
@@ -150,7 +151,7 @@ export function registerPublishCommand(program: Command) {
               `Invalid --visibility '${visibilityRaw}'. Must be: draft | published | unlisted.`,
             ),
           );
-          process.exit(1);
+          exit(ExitCode.USAGE);
         }
         const visibility = visibilityRaw.toUpperCase();
 
@@ -183,7 +184,7 @@ export function registerPublishCommand(program: Command) {
             ),
           );
           console.error(chalk.yellow(publishUsageExamples()));
-          process.exit(1);
+          exit(ExitCode.USAGE);
         }
 
         const title = titleOpt?.trim() || apiSlug;
@@ -208,16 +209,16 @@ export function registerPublishCommand(program: Command) {
             }
             if (lintResult.errors.length > 0) {
               console.error(chalk.red("Lint errors block publish. Fix them or use --skip-lint."));
-              process.exit(1);
+              exit(ExitCode.VALIDATION);
             }
             if (strict && lintResult.warnings.length > 0) {
               console.error(chalk.red("Strict mode: warnings block publish."));
-              process.exit(1);
+              exit(ExitCode.VALIDATION);
             }
           } catch (e) {
             spinner.fail("Lint failed");
             console.error(e);
-            process.exit(1);
+            exit(ExitCode.GENERIC);
           }
         } else {
           spinner.succeed("Lint skipped");
@@ -231,7 +232,7 @@ export function registerPublishCommand(program: Command) {
           ctx = requireOrgContext(opts.org as string | undefined);
         } catch (e) {
           console.error(chalk.red((e as Error).message));
-          process.exit(1);
+          exit(ExitCode.AUTH_MISSING);
         }
 
         if (opts.dryRun) {
@@ -304,14 +305,15 @@ export function registerPublishCommand(program: Command) {
           spinner.stop();
           if (is401(err)) {
             console.error(chalk.red("Token invalid. Run 'spec0 auth login' to re-authenticate."));
-            process.exit(1);
+            exit(ExitCode.AUTH_MISSING);
           }
           if (is402(err)) {
             const msg =
               (err as { response?: { body?: { detail?: string } } })?.response?.body?.detail ??
               "Plan limit exceeded. Upgrade your plan to publish more public APIs or use PUBLISHED visibility.";
             console.error(chalk.red(`Plan limit: ${msg}`));
-            process.exit(1);
+            // 402 isn't in the stable table; PERMISSION_DENIED is closest semantic.
+            exit(ExitCode.PERMISSION_DENIED);
           }
           const statusCode = (err as { response?: { statusCode?: number } })?.response?.statusCode;
           if (statusCode === 409) {
@@ -321,7 +323,7 @@ export function registerPublishCommand(program: Command) {
               ),
             );
             console.error(chalk.yellow("Use a new version tag (e.g. bump the patch version)."));
-            process.exit(1);
+            exit(ExitCode.CONFLICT);
           }
           const msg =
             (err as { response?: { body?: { detail?: string } }; message?: string })?.response?.body
@@ -330,7 +332,7 @@ export function registerPublishCommand(program: Command) {
             String(err);
           console.error(chalk.red(`Publish failed: ${msg}\n`));
           console.error(chalk.yellow(publishUsageExamples()));
-          process.exit(1);
+          exit(exitCodeForHttpStatus(statusCode));
         }
       },
     );
