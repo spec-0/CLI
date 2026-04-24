@@ -322,6 +322,47 @@ test("SPEC0_TOKEN recognized — reaches auth step (not 'not authenticated')", (
   );
 });
 
+// ── api group ─────────────────────────────────────────────────────────────────
+
+section("spec0 api");
+
+test("api --help exits 0", () => {
+  const r = run(["api", "--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+});
+
+test("api --help shows list and show subcommands", () => {
+  const r = run(["api", "--help"]);
+  const out = r.stdout + r.stderr;
+  assert(out.includes("list"), "api list missing from --help");
+  assert(out.includes("show"), "api show missing from --help");
+});
+
+test("api list --help mentions --output", () => {
+  const r = run(["api", "list", "--help"]);
+  assert((r.stdout + r.stderr).includes("--output"), "api list missing --output flag");
+});
+
+test("api list without auth exits 3 (AUTH_MISSING)", () => {
+  const r = run(["api", "list"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
+test("api show without ref exits non-zero (commander missing argument)", () => {
+  const r = run(["api", "show"], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  assert(r.status !== 0, `Expected non-zero exit, got ${r.status}`);
+});
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 const total = passed + failed;
