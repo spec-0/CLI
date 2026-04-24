@@ -13,6 +13,7 @@
 
 import { stringify as yamlStringify } from "yaml";
 import { ExitCode, exitCodeName, type ExitCodeValue } from "../exit-codes.js";
+import { isAgentMode } from "../agent-mode.js";
 
 export type OutputFormat = "text" | "json" | "yaml";
 
@@ -44,12 +45,18 @@ export function resolveOutputContext(opts: OutputOptions = {}): OutputContext {
   const fromOutput = normaliseFormat(opts.output);
   const fromFormat = normaliseFormat(opts.format);
   const fromJson = opts.json ? "json" : undefined;
-  const format = (fromOutput ?? fromFormat ?? fromJson ?? "text") as OutputFormat;
+  // Agent mode: default format is json unless the caller passed an explicit
+  // --output / --format / --json flag.
+  const agent = isAgentMode();
+  const fallback: OutputFormat = agent ? "json" : "text";
+  const format = (fromOutput ?? fromFormat ?? fromJson ?? fallback) as OutputFormat;
 
   return {
     format,
-    isTTY: Boolean(process.stdout.isTTY),
-    quiet: Boolean(opts.quiet),
+    // Agent mode suppresses TTY heuristics (colour, progress bars) regardless
+    // of the actual stdout.
+    isTTY: agent ? false : Boolean(process.stdout.isTTY),
+    quiet: Boolean(opts.quiet) || agent,
     verbose: Boolean(opts.verbose),
   };
 }

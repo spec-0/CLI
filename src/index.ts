@@ -1,5 +1,16 @@
 #!/usr/bin/env node
 
+import { applyAgentModeEnv, isAgentMode } from "./lib/agent-mode.js";
+
+// Agent mode: apply environment side-effects (NO_COLOR, FORCE_COLOR=0) and
+// suppress TTY heuristics before anything else does a capability check. See
+// lib/agent-mode.ts for what the mode does and why.
+applyAgentModeEnv();
+if (isAgentMode()) {
+  Object.defineProperty(process.stdout, "isTTY", { value: false });
+  Object.defineProperty(process.stderr, "isTTY", { value: false });
+}
+
 import { Command } from "commander";
 import { registerAuthCommands } from "./commands/auth.js";
 import { registerInitCommand } from "./commands/init.js";
@@ -49,6 +60,9 @@ registerSyncStatusCommand(program);
 registerCiCommands(program);
 registerCommandsCommand(program);
 
-notifyUpdateIfAvailable(getCliVersion());
+// Skip the update-check banner in agent mode — stderr should be clean.
+if (!isAgentMode()) {
+  notifyUpdateIfAvailable(getCliVersion());
+}
 
 program.parse();

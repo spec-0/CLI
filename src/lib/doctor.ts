@@ -98,6 +98,15 @@ export function buildDoctorReport(): DoctorReport {
         : { kind: "config", path: getConfigPath() },
   });
 
+  // Mode: "agent" when SPEC0_MODE=agent, "human" otherwise. Surfaced so agents
+  // can confirm the mode they think they're in is actually active.
+  const mode = (process.env.SPEC0_MODE ?? "").toLowerCase() === "agent" ? "agent" : "human";
+  settings.push({
+    name: "mode",
+    value: mode,
+    source: process.env.SPEC0_MODE ? { kind: "env", var: "SPEC0_MODE" } : { kind: "default" },
+  });
+
   // OK when token + orgId are present — those are the only two strictly required.
   const ok = settings.every((s) => {
     if (s.name === "token" || s.name === "orgId") return s.source.kind !== "missing";

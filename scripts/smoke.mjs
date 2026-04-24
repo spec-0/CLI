@@ -718,6 +718,104 @@ test("mock show --output=json without auth emits AUTH_MISSING", () => {
   assert(parsed.error.code === "AUTH_MISSING", `expected AUTH_MISSING, got ${parsed.error.code}`);
 });
 
+// ── SPEC0_MODE=agent ─────────────────────────────────────────────────────────
+
+section("SPEC0_MODE=agent");
+
+test("agent mode: api list defaults to JSON even without --output", () => {
+  const r = run(["api", "list"], {
+    env: {
+      SPEC0_MODE: "agent",
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+  let parsed;
+  try {
+    parsed = JSON.parse(r.stdout);
+  } catch {
+    throw new Error(`Expected JSON in agent mode, got: ${r.stdout.slice(0, 200)}`);
+  }
+  assert(parsed.error?.code === "AUTH_MISSING", `expected AUTH_MISSING, got ${parsed.error?.code}`);
+});
+
+test("agent mode: doctor defaults to JSON", () => {
+  const r = run(["doctor"], {
+    env: {
+      SPEC0_MODE: "agent",
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  let parsed;
+  try {
+    parsed = JSON.parse(r.stdout);
+  } catch {
+    throw new Error(`Expected JSON doctor report in agent mode, got: ${r.stdout.slice(0, 200)}`);
+  }
+  assert(Array.isArray(parsed.settings), "doctor report missing settings array");
+});
+
+test("agent mode: commands defaults to JSON", () => {
+  const r = run(["commands"], { env: { SPEC0_MODE: "agent" } });
+  assert(r.status === 0, `exit ${r.status}`);
+  let parsed;
+  try {
+    parsed = JSON.parse(r.stdout);
+  } catch {
+    throw new Error(`Expected JSON manifest in agent mode, got: ${r.stdout.slice(0, 200)}`);
+  }
+  assert(Array.isArray(parsed.commands), "manifest missing commands array");
+});
+
+test("agent mode: output has no ANSI escape sequences", () => {
+  const r = run(["api", "list"], {
+    env: {
+      SPEC0_MODE: "agent",
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  const combined = r.stdout + r.stderr;
+  const ESC = String.fromCharCode(27);
+  assert(
+    !combined.includes(`${ESC}[`),
+    `agent mode should emit no ANSI codes: ${JSON.stringify(combined)}`,
+  );
+});
+
+test("agent mode: no update-check noise on stderr", () => {
+  const r = run(["--version"], { env: { SPEC0_MODE: "agent" } });
+  assert(r.status === 0, `exit ${r.status}`);
+  // The update banner writes to stderr via notifyUpdateIfAvailable. Agent mode
+  // skips that call entirely.
+  assert(!r.stderr.includes("update available"), `agent mode leaked update noise: ${r.stderr}`);
+});
+
+test("agent mode: explicit --output=text overrides the default", () => {
+  const r = run(["doctor", "--output=text"], {
+    env: {
+      SPEC0_MODE: "agent",
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.stdout.includes("spec0 configuration"), "expected text header not found");
+});
+
 test("text mode still prints errors to stderr (not stdout)", () => {
   const r = run(["api", "list"], {
     env: {
