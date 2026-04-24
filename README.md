@@ -1,109 +1,161 @@
-# Spec0 CLI
+# @spec0/cli
 
-Public CLI for the Spec0 API registry — register API specs, create mock servers, lint, and interact with the Spec0 SaaS.
-
-## Install
-
-Requires **Node.js 20+**.
+The scriptable control plane for the [Spec0](https://spec0.io) platform. Register APIs, run mocks, lint, publish, and gate releases — from your terminal or CI.
 
 ```bash
 npm install -g @spec0/cli
+spec0 --version
+```
+
+Requires **Node.js 20+**.
+
+## 60-second quickstart
+
+```bash
+# 1. authenticate (browser flow)
+spec0 auth login
+
+# 2. from a repo containing an OpenAPI file
+spec0 init                               # writes .spec0.yaml
+spec0 lint openapi.yaml --min-score 80   # optional: gate on quality
+spec0 push openapi.yaml                  # team-scoped
+spec0 publish openapi.yaml --semver      # public registry, auto-bumped
+
+# 3. spin up a mock server
+spec0 mock create --api my-api
+spec0 mock show my-api                   # URL + metadata
+```
+
+Or non-interactively in CI:
+
+```bash
+export SPEC0_TOKEN=...
+export SPEC0_ORG_ID=...
+spec0 publish openapi.yaml --semver
 ```
 
 ## Commands
 
-### Authentication
+### Auth & diagnostics
 
-- `spec0 auth login` — Browser-based login, stores API key; optional `--app-url` / `--api-url` (else `PLATFORM_APP_URL` / `PLATFORM_API_URL`)
-- `spec0 auth logout` — Clear local config
-- `spec0 auth status` — Print current org and key
-- `spec0 auth token` — Print token (for scripting)
-- `spec0 auth switch <org>` — Switch default org
+| Command             | Description                                                             |
+| ------------------- | ----------------------------------------------------------------------- |
+| `spec0 auth login`  | Browser-based login; stores API key locally.                            |
+| `spec0 auth logout` | Clear the locally stored token.                                         |
+| `spec0 auth status` | Print the active org + key metadata.                                    |
+| `spec0 auth switch` | Switch the default org (multi-tenant setups).                           |
+| `spec0 whoami`      | One-line org + user summary.                                            |
+| `spec0 doctor`      | Print which source each setting resolved from (env / config / default). |
 
-### Register & Init
+### Spec lifecycle
 
-- `spec0 init` — Detect spec, create `.spec0.yaml` (add `--publish` to run `spec0 register` after init)
-- `spec0 register` — Upload or update an OpenAPI spec on the platform (lint gate + version row). Pass the spec path as **`--spec-file <path>`**, **`spec0 --spec-file <path> register`**, or a positional **`[spec-file]`** (same resolution order).
-- `spec0 publish` — Reserved for a future workflow; **not implemented**. Use **`register`** to sync specs today.
+| Command              | Description                                                             |
+| -------------------- | ----------------------------------------------------------------------- |
+| `spec0 init`         | Detect `openapi.yaml` in cwd, write `.spec0.yaml`.                      |
+| `spec0 push`         | Upload spec to the team-scoped workspace (private).                     |
+| `spec0 publish`      | Publish to the public registry; `--semver` auto-bumps based on oasdiff. |
+| `spec0 lint`         | Spectral lint; `--org-ruleset`, `--save-ruleset <file>`, `--min-score`. |
+| `spec0 pull <ref>`   | Download a published spec (`acme/orders@v1.2.0`).                       |
+| `spec0 diff <a> <b>` | Diff specs; both sides can be file paths or registry refs.              |
+| `spec0 log <ref>`    | Version history for a published API.                                    |
+| `spec0 search`       | Semantic search across the org's APIs.                                  |
 
-**Spec path resolution** (register and lint): `register --spec-file` / `lint --spec-file` wins over global `spec0 --spec-file`, which wins over the optional positional `[spec-file]`. If multiple are given, they must refer to the same file.
+### API management
 
-```bash
-spec0 register --spec-file ./openapi.yaml --name my-api --team my-team --version 1.0.0
-spec0 --spec-file /abs/path/openapi.yaml register --name my-api --team my-team --version 1.0.0
-spec0 register ./openapi.yaml --name my-api --team my-team --version 1.0.0
-```
+| Command                     | Description                                                        |
+| --------------------------- | ------------------------------------------------------------------ |
+| `spec0 api list`            | Catalogue view with `--team / --status / --search` filters.        |
+| `spec0 api show <ref>`      | Single-API summary (counts, team, status).                         |
+| `spec0 api changelog <ref>` | Diff between published versions; `--from / --to`, markdown output. |
 
-### Mock Servers
+### Mock servers
 
-- `spec0 mock create` — Create mock server
-- `spec0 mock list` — List mock servers
-- `spec0 mock url <api-name>` — Print mock URL
-- `spec0 mock delete <api-name>` — Delete mock server
+| Command                 | Description                                                 |
+| ----------------------- | ----------------------------------------------------------- |
+| `spec0 mock create`     | Provision (or fetch) the default mock; prints one-time key. |
+| `spec0 mock list`       | Table of every mock in the org.                             |
+| `spec0 mock show <api>` | Structured view (URL + metadata) for one mock.              |
+| `spec0 mock url <api>`  | Pipe-friendly single-line URL (for `$(…)` substitution).    |
 
-### Lint
+### CI helpers
 
-- `spec0 lint [spec-file]` — Lint with Spectral; same `--spec-file` / global `--spec-file` / positional rules as register; `--org-ruleset` loads org YAML from the platform
-
-### Registry & Search
-
-- `spec0 pull <org>/<name>[@tag]` — Download spec (YAML) from registry; `-o file.yaml` to write
-- `spec0 search <query>` — Semantic search in your org (`--max-results`)
-- `spec0 log <api-ref>` — Version history (`org/api` or `api-name` with default org slug from config); `--json`
-- `spec0 diff <a> <b>` — Unified diff: each side is a **file path** or **registry ref** `org/api[@tag]`; `--breaking-only` uses [`oasdiff`](https://github.com/Tufin/oasdiff) if installed
-- `spec0 status` — Org summary (API count, mocks, teams, plan) + mock table; `--json`
+| Command                    | Description                                                    |
+| -------------------------- | -------------------------------------------------------------- |
+| `spec0 sync-status <ref>`  | Has the spec changed since last publish? Auto-detects git SHA. |
+| `spec0 ci generate github` | Emit a ready-to-commit `.github/workflows/spec0-publish.yml`.  |
+| `spec0 status`             | Org overview: API count, mocks, teams, plan.                   |
 
 ### Other
 
-- `spec0 version` — Print package version and Node.js version; `--json` for machine-readable output
-- `spec0 -V` / `spec0 --version` — Short version string (from `package.json`)
-- `spec0 team` — Team management
-- `spec0 mcp url` — Print MCP server URL for Cursor/Claude
+- `spec0 version` — CLI + Node version (text or `--output=json`).
+- `spec0 mcp url` — Print the MCP server URL for Cursor / Claude.
 
-## Distribution
+Every command supports `--output=text|json|yaml` unless noted; progress goes to stderr, data to stdout.
 
-- **npm:** `npm install -g @spec0/cli` (primary).
-- **GitHub Action:** [publish-api-spec-action](https://github.com/winspect-labs/publish-api-spec-action) — use `npx @spec0/cli register` in workflows (the `publish` subcommand is not implemented yet).
-- **Homebrew / single binary / curl installer:** planned for a later release.
+## Authentication
 
-## CI Usage
+Two equivalent paths:
 
-Set environment variables for non-interactive use:
+1. **Interactive**: `spec0 auth login` writes `~/.config/spec0/config.json`.
+2. **Non-interactive**: set `SPEC0_TOKEN` and `SPEC0_ORG_ID`.
 
-```bash
-export PLATFORM_API_TOKEN=org_xxx
-export PLATFORM_ORG_ID=uuid
-spec0 register
+| Variable        | Purpose                                                      | Default                      |
+| --------------- | ------------------------------------------------------------ | ---------------------------- |
+| `SPEC0_TOKEN`   | Bearer token sent on every request.                          | _required_ for non-auth cmds |
+| `SPEC0_ORG_ID`  | UUID of the org the CLI acts against.                        | _required_                   |
+| `SPEC0_API_URL` | Platform backend base URL.                                   | `https://api.spec0.io`       |
+| `SPEC0_APP_URL` | Platform web app (used for auth callback + dashboard links). | `https://spec0.io`           |
+
+`PLATFORM_*` variants are accepted for one-minor backwards compatibility and will be removed in the next major. Use `spec0 doctor` to see which source each value is resolving from.
+
+## Exit codes
+
+Stable forever — CI pipelines depend on them.
+
+| Code | Meaning                                             |
+| ---- | --------------------------------------------------- |
+| 0    | success                                             |
+| 1    | generic / unclassified failure                      |
+| 2    | usage error (bad flags, missing args)               |
+| 3    | not authenticated (no token / token expired)        |
+| 4    | permission denied (403)                             |
+| 5    | resource not found (404)                            |
+| 6    | conflict (409 — e.g. name already taken)            |
+| 7    | validation failed (422 — e.g. spec below min score) |
+| 8    | rate limited (429)                                  |
+| 9    | upstream server error (5xx)                         |
+| 10   | network error (unreachable, timeout)                |
+
+## CI pattern
+
+The recommended GitHub Actions workflow — auto-generated by `spec0 ci generate github` — only publishes when the spec has changed:
+
+```yaml
+- name: skip if unchanged
+  id: sync
+  run: |
+    if spec0 sync-status my-api --output=json | jq -e '.needsPublish | not' >/dev/null; then
+      echo "skip=1" >> "$GITHUB_OUTPUT"
+    fi
+
+- name: publish
+  if: steps.sync.outputs.skip != '1'
+  run: spec0 publish openapi.yaml --semver
+  env:
+    SPEC0_TOKEN: ${{ secrets.SPEC0_TOKEN }}
+    SPEC0_ORG_ID: ${{ secrets.SPEC0_ORG_ID }}
 ```
 
-**Two different origins:**
+## Guides
 
-| Variable               | Used for                                                                                                                                                                                                               | Default (if unset)                     |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| **`PLATFORM_APP_URL`** | **Auth only** (browser): base URL for `spec0 auth login` → `/cli-auth`. Also used for **optional dashboard links** printed by `spec0 register` (`specUrl` — opens the API in the UI; not an HTTP call to the backend). | `http://localhost:3000`                |
-| **`PLATFORM_API_URL`** | **All backend traffic**: register, pull, mock, lint, search, registry, and any other CLI HTTP to Spring. Stored in config on login as the API base.                                                                    | `http://localhost:8080/api-management` |
-
-Do **not** point `PLATFORM_API_URL` at the Next.js dev server (`:3000`) — e.g. `POST …/discovery/spec-records/sync` must go to the **API**. Match **`NEXT_PUBLIC_API_BASE_URL`** from `api-management-ui` (often includes `/api-management` when Spring uses that servlet context path).
-
-Staging / production: set both, for example:
-
-```bash
-export PLATFORM_APP_URL=https://spec0-app-staging.up.railway.app
-export PLATFORM_API_URL=https://your-backend-host.example.com/api-management
-```
-
-Set **`PLATFORM_API_URL` in your environment** when you run any command (e.g. `export` in the shell, or a `.env` loaded by your tool). **If set, it overrides** the API base stored at login, so you can run `spec0 register` from any directory without re-login after fixing a bad stored URL. To persist a new API base in config, run **`spec0 auth login`** again (or use `spec0 auth login --api-url …`).
-
-## Version
-
-The published semver comes from `package.json`. Examples:
-
-```bash
-spec0 --version
-spec0 version
-spec0 version --json
-```
+- [Getting started](docs/guides/getting-started.md) — from zero to published in one terminal session.
+- [GitHub Actions CI](docs/guides/ci-github-actions.md) — the workflow we recommend, copy-pasteable.
+- [Mock server lifecycle](docs/guides/mock-server.md) — create / show / url / test.
 
 ## Contributing
 
-Clone this repository and see **`AGENTS.md`** for build commands, tests, and local development.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Short version: typos + small fixes welcome via PR; for anything larger, open an issue first. Security reports go to [`SECURITY.md`](SECURITY.md).
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
