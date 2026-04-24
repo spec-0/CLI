@@ -121,9 +121,9 @@ test("push --help mentions --skip-lint", () => {
   assert((r.stdout + r.stderr).includes("--skip-lint"), "Missing --skip-lint in push help");
 });
 
-test("push with missing file exits 1", () => {
+test("push with missing file exits 2 (USAGE)", () => {
   const r = run(["push", "nonexistent-spec.yaml"]);
-  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+  assert(r.status === 2, `Expected exit 2, got ${r.status}`);
 });
 
 test("push with missing file shows actionable error", () => {
@@ -132,7 +132,7 @@ test("push with missing file shows actionable error", () => {
   assert(out.includes("not found") || out.includes("Spec file"), `Unexpected error: ${out}`);
 });
 
-test("push without auth exits 1 and references SPEC0_TOKEN", () => {
+test("push without auth exits 3 (AUTH_MISSING) and references SPEC0_TOKEN", () => {
   const r = run(["push", "--skip-lint", validSpec], {
     env: {
       SPEC0_TOKEN: "",
@@ -142,7 +142,7 @@ test("push without auth exits 1 and references SPEC0_TOKEN", () => {
       HOME: resolve(root, "test", ".jest-home"),
     },
   });
-  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
   const out = r.stdout + r.stderr;
   assert(
     out.includes("SPEC0_TOKEN") || out.includes("auth login"),
@@ -208,9 +208,14 @@ test("lint --format json outputs valid JSON", () => {
   assert(Array.isArray(parsed.errors), "JSON output missing 'errors'");
 });
 
-test("lint missing file exits 1", () => {
+test("lint missing file exits 2 (USAGE)", () => {
   const r = run(["lint", "no-such-file.yaml"]);
-  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+  assert(r.status === 2, `Expected exit 2, got ${r.status}`);
+});
+
+test("lint below --min-score exits 7 (VALIDATION)", () => {
+  const r = run(["lint", validSpec, "--min-score", "999"]);
+  assert(r.status === 7, `Expected exit 7 (VALIDATION), got ${r.status}`);
 });
 
 // ── mock ─────────────────────────────────────────────────────────────────────
@@ -538,11 +543,11 @@ test("lint --help mentions --save-ruleset", () => {
   assert((r.stdout + r.stderr).includes("--save-ruleset"), "lint missing --save-ruleset");
 });
 
-test("lint --save-ruleset with missing file exits 1", () => {
+test("lint --save-ruleset with missing file exits 2 (USAGE)", () => {
   const r = run(["lint", "--save-ruleset", "no-such-ruleset.yaml"], {
     env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
   });
-  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+  assert(r.status === 2, `Expected exit 2, got ${r.status}`);
 });
 
 // ── commands (agent-discovery) ────────────────────────────────────────────────

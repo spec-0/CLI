@@ -23,6 +23,7 @@ import { runSpectral } from "../lib/lint.js";
 import { formatLintText, formatPublishText, formatGitHubAnnotation } from "../lib/output.js";
 import { createOrgApiClient, is401, is402, extractErrorMessage } from "../lib/api-client.js";
 import { requireOrgContext } from "../lib/auth-context.js";
+import { ExitCode, exit, exitCodeForHttpStatus } from "../lib/exit-codes.js";
 import { resolveCliSpecPathFromFlags } from "../lib/cli-spec-path.js";
 import { resolvedPlatformAppUrl } from "../lib/platform-defaults.js";
 import { detectCI, getGitShaForFile, getGitBranch } from "../lib/ci-detect.js";
@@ -93,7 +94,7 @@ async function runPush(
       chalk.red("Spec file not found. Pass a path as the first argument or via --spec-file.\n"),
     );
     console.error(chalk.yellow(usageExamples(cmdName)));
-    process.exit(1);
+    exit(ExitCode.USAGE);
   }
 
   const apiId = opts["apiId"] as string | undefined;
@@ -117,7 +118,7 @@ async function runPush(
   if (!apiId && !resolvedName) {
     console.error(chalk.red("Cannot derive API name from spec path. Use --name payment-api.\n"));
     console.error(chalk.yellow(usageExamples(cmdName)));
-    process.exit(1);
+    exit(ExitCode.USAGE);
   }
 
   // ── Team validation (optional) ─────────────────────────────────────────────
@@ -125,7 +126,7 @@ async function runPush(
     const teamErr = validateTeamArg(team);
     if (teamErr) {
       console.error(chalk.red(`${teamErr}\n`));
-      process.exit(1);
+      exit(ExitCode.USAGE);
     }
   }
 
@@ -173,16 +174,16 @@ async function runPush(
       }
       if (lintResult.errors.length > 0) {
         console.error(chalk.red("Lint errors block push. Fix them or use --skip-lint."));
-        process.exit(1);
+        exit(ExitCode.VALIDATION);
       }
       if (strict && lintResult.warnings.length > 0) {
         console.error(chalk.red("Strict mode: lint warnings block push."));
-        process.exit(1);
+        exit(ExitCode.VALIDATION);
       }
     } catch (e) {
       spinner.fail("Lint check failed");
       console.error(e);
-      process.exit(1);
+      exit(ExitCode.GENERIC);
     }
   } else {
     spinner.succeed("Lint skipped");
@@ -194,7 +195,7 @@ async function runPush(
     ctx = requireOrgContext(opts.org as string | undefined);
   } catch (e) {
     console.error(chalk.red((e as Error).message));
-    process.exit(1);
+    exit(ExitCode.AUTH_MISSING);
   }
 
   const openapiSpec = readFileSync(specPath, "utf-8");
@@ -316,18 +317,20 @@ async function runPush(
           chalk.red("Authentication failed. Run 'spec0 auth login' to re-authenticate."),
         );
       }
-      process.exit(1);
+      exit(ExitCode.AUTH_MISSING);
     }
     if (is402(err)) {
       const msg = extractErrorMessage(err) ?? "You've reached your plan limit.";
       console.error(chalk.red(`Plan limit reached: ${msg}`));
       console.error(chalk.yellow("Upgrade your plan at your org settings."));
-      process.exit(1);
+      // 402 isn't in the stable exit-code table; closest semantic is permission-denied.
+      exit(ExitCode.PERMISSION_DENIED);
     }
+    const status = (err as { response?: { statusCode?: number } })?.response?.statusCode;
     const detail = extractErrorMessage(err) ?? (err as Error).message ?? String(err);
     console.error(chalk.red(`Push failed: ${detail}\n`));
     console.error(chalk.yellow(usageExamples(cmdName)));
-    process.exit(1);
+    exit(exitCodeForHttpStatus(status));
   }
 }
 
