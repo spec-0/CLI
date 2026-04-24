@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from "fs";
 import { createTwoFilesPatch } from "diff";
 import { createOrgApiClient, is401, extractErrorMessage } from "../lib/api-client.js";
 import { requireOrgContext, type ResolvedOrgContext } from "../lib/auth-context.js";
-import { parseRegistryRef } from "../lib/registry-ref.js";
+import { resolveRef } from "../lib/ref-resolver.js";
 
 interface SpecDiffResponse {
   hasBreakingChanges: boolean;
@@ -22,7 +22,10 @@ async function loadSpecContent(token: string, ctx: ResolvedOrgContext): Promise<
     return readFileSync(trimmed, "utf-8");
   }
   const client = createOrgApiClient(ctx);
-  const parsed = parseRegistryRef(trimmed);
+  const parsed = resolveRef(trimmed);
+  if (parsed.kind !== "name" || !parsed.org) {
+    throw new Error(`Diff requires '<org>/<api>[@<tag>]' or a local file. Got '${trimmed}'.`);
+  }
   const path = parsed.tag
     ? `/registry/${encodeURIComponent(parsed.org)}/${encodeURIComponent(parsed.api)}/versions/${encodeURIComponent(parsed.tag)}`
     : `/registry/${encodeURIComponent(parsed.org)}/${encodeURIComponent(parsed.api)}?format=yaml`;
