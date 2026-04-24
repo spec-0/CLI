@@ -4,7 +4,7 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { existsSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { findSpecInDir } from "../lib/spec-finder.js";
@@ -26,6 +26,10 @@ export function registerLintCommand(program: Command) {
     .option("--spec-file <path>", "Path to OpenAPI spec file")
     .option("--ruleset <file>", "Use custom ruleset file")
     .option("--org-ruleset", "Fetch org ruleset from server")
+    .option(
+      "--save-ruleset <file>",
+      "Upload <file> as the org's stored Spectral ruleset (skips the lint step)",
+    )
     .option("--format <fmt>", "Output: text, json, github, sarif", "text")
     .option("--min-score <n>", "Exit 1 if score below n (0-100)", "0")
     .option("--strict", "Exit 1 on any warning")
@@ -35,6 +39,12 @@ export function registerLintCommand(program: Command) {
         opts: Record<string, string | boolean>,
         command: Command,
       ) => {
+        // --save-ruleset is an upload-only mode; short-circuit the lint path.
+        if (typeof opts.saveRuleset === "string" && opts.saveRuleset) {
+          await uploadRuleset(opts.saveRuleset);
+          return;
+        }
+
         const cwd = process.cwd();
         const specPath =
           resolveCliSpecPathFromFlags(command, cwd, opts.specFile as string | undefined, specArg) ??
@@ -89,4 +99,27 @@ export function registerLintCommand(program: Command) {
         if (result.errors.length > 0) process.exit(1);
       },
     );
+}
+
+async function uploadRuleset(filePath: string): Promise<void> {
+  if (!existsSync(filePath)) {
+    console.error(chalk.red(`Ruleset file not found: ${filePath}`));
+    process.exit(1);
+  }
+  const rulesetYaml = readFileSync(filePath, "utf-8");
+  let ctx;
+  try {
+    ctx = requireOrgContext();
+  } catch (e) {
+    console.error(chalk.red((e as Error).message));
+    process.exit(1);
+  }
+  const client = createOrgApiClient(ctx);
+  try {
+    await client.putJson("/api-management/cli/v1/spectral-ruleset", { rulesetYaml });
+    console.log(chalk.green(`✓ uploaded ${filePath} as the org's Spectral ruleset`));
+  } catch (err) {
+    console.error(chalk.red(`Failed to upload ruleset: ${(err as Error).message}`));
+    process.exit(1);
+  }
 }

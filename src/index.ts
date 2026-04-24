@@ -16,6 +16,8 @@ import { registerMcpCommands } from "./commands/mcp.js";
 import { registerVersionCommand } from "./commands/version.js";
 import { registerApiCommands } from "./commands/api/index.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
+import { registerSyncStatusCommand } from "./commands/sync-status.js";
+import { registerCiCommands } from "./commands/ci/index.js";
 import { getCliVersion } from "./lib/version.js";
 import { notifyUpdateIfAvailable } from "./lib/update-check.js";
 
@@ -42,6 +44,8 @@ registerStatusCommand(program);
 registerMcpCommands(program);
 registerApiCommands(program);
 registerDoctorCommand(program);
+registerSyncStatusCommand(program);
+registerCiCommands(program);
 
 notifyUpdateIfAvailable(getCliVersion());
 

@@ -37,7 +37,10 @@ Goal: every API-management operation available in the spec0 web app should be sc
 - `spec0 mock refresh <api>` — re-provision mock against the latest spec. **Blocked**: backend needs a `POST /mocks/{id}/refresh` (or equivalent) endpoint.
 - `spec0 mock delete <api>` — remove mock server. **Blocked**: backend needs `DELETE /api-management/cli/v1/mocks/{id}` on the CLI surface.
 - `spec0 mock configure <api> --strategy ...` / `mock variants add` / `mock logs --tail`
-- `spec0 quality score <ref> --min-score N` — fail the pipeline below threshold
+- `spec0 quality score <ref> --min-score N` — `spec0 lint --min-score` already covers the single-spec case; a cross-spec/org-level score aggregator is still open.
+- `spec0 sync-status <ref>` — is the local spec newer than the last published version? ✅ shipped.
+- `spec0 ci generate github` — emit a ready-to-commit GitHub Actions workflow. ✅ shipped.
+- `spec0 lint --save-ruleset <file>` — upload a ruleset to the org's stored Spectral ruleset. ✅ shipped.
 
 ### P3 — Discovery & release helpers
 
