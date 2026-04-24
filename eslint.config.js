@@ -40,13 +40,14 @@ export default [
     },
   },
   {
-    // Build scripts allowed to be more permissive.
-    files: ["scripts/**/*.{js,mjs,cjs}"],
+    // Build scripts and root-level CJS config files allowed to be more permissive.
+    files: ["scripts/**/*.{js,mjs,cjs}", "*.cjs"],
     languageOptions: {
       globals: { ...globals.node },
     },
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
 ];
