@@ -467,6 +467,84 @@ test("doctor --output=json emits valid JSON with settings array", () => {
   assert(parsed.ok === false, "ok should be false when token is missing");
 });
 
+// ── sync-status ───────────────────────────────────────────────────────────────
+
+section("spec0 sync-status");
+
+test("sync-status --help exits 0", () => {
+  const r = run(["sync-status", "--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+});
+
+test("sync-status --help mentions --git-sha", () => {
+  const r = run(["sync-status", "--help"]);
+  assert((r.stdout + r.stderr).includes("--git-sha"), "sync-status missing --git-sha");
+});
+
+test("sync-status without auth exits 3 (AUTH_MISSING)", () => {
+  const r = run(["sync-status", "acme/orders"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
+test("sync-status without ref or --api exits 2 (USAGE)", () => {
+  const r = run(["sync-status", "--git-sha", "abc123"], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  assert(r.status === 2, `Expected exit 2 (USAGE), got ${r.status}`);
+});
+
+// ── ci generate ───────────────────────────────────────────────────────────────
+
+section("spec0 ci generate");
+
+test("ci --help exits 0 and shows generate subcommand", () => {
+  const r = run(["ci", "--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+  assert((r.stdout + r.stderr).includes("generate"), "ci help missing 'generate'");
+});
+
+test("ci generate with unknown provider exits 2 (USAGE)", () => {
+  const r = run(["ci", "generate", "gitlab"], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  assert(r.status === 2, `Expected exit 2 (USAGE), got ${r.status}`);
+});
+
+test("ci generate github without auth exits 3 (AUTH_MISSING)", () => {
+  const r = run(["ci", "generate", "github"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
+// ── lint --save-ruleset ───────────────────────────────────────────────────────
+
+test("lint --help mentions --save-ruleset", () => {
+  const r = run(["lint", "--help"]);
+  assert((r.stdout + r.stderr).includes("--save-ruleset"), "lint missing --save-ruleset");
+});
+
+test("lint --save-ruleset with missing file exits 1", () => {
+  const r = run(["lint", "--save-ruleset", "no-such-ruleset.yaml"], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  assert(r.status === 1, `Expected exit 1, got ${r.status}`);
+});
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 const total = passed + failed;

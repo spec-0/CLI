@@ -109,6 +109,23 @@ export function createOrgApiClient(ctx: ResolvedOrgContext) {
       });
       return res.body as T;
     },
+    async putJson<T = unknown>(
+      path: string,
+      body: unknown,
+      headers?: Record<string, string>,
+    ): Promise<T> {
+      const res = await got.put(`${baseUrl}${path}`, {
+        json: body,
+        headers: {
+          ...baseHeaders,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...headers,
+        },
+        responseType: "json",
+      });
+      return res.body as T;
+    },
     async postMultipart<T = unknown>(
       path: string,
       fields: Record<string, { content: Buffer | string; filename: string }>,

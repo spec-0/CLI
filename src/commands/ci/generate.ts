@@ -1,0 +1,98 @@
+/**
+ * spec0 ci generate github — emit a ready-to-commit GitHub Actions workflow.
+ *
+ * Wraps GET /api-management/cli/v1/ci-config. The backend renders the
+ * workflow YAML (including auth-secret references and the spec path filter),
+ * so the user just needs to drop it into `.github/workflows/`.
+ */
+
+import { Command } from "commander";
+import { writeFileSync, mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import chalk from "chalk";
+import { createOrgApiClient, is401 } from "../../lib/api-client.js";
+import { requireOrgContext } from "../../lib/auth-context.js";
+import { ExitCode, exit } from "../../lib/exit-codes.js";
+import {
+  emit,
+  progress,
+  resolveOutputContext,
+  type OutputOptions,
+} from "../../lib/output/index.js";
+import type { paths } from "../../types.js";
+
+type CiConfigResponse =
+  paths["/api-management/cli/v1/ci-config"]["get"]["responses"][200]["content"]["application/json"];
+
+export function registerCiGenerateCommand(ci: Command) {
+  ci.command("generate")
+    .argument("<provider>", "CI provider (currently supported: github)")
+    .description("Generate a workflow file for <provider> that runs 'spec0 publish' on push.")
+    .option("--spec-file <path>", "Path to OpenAPI spec file", "openapi.yaml")
+    .option("--api-name <name>", "API name to embed in the workflow (default: spec filename)")
+    .option("--branch <branch>", "Git branch that triggers the workflow", "main")
+    .option("--write", "Write the workflow to its suggested path (default: print to stdout)")
+    .option("--org <uuid>", "Org id override")
+    .option("--output <format>", "Output format for metadata: text, json, yaml (default: text)")
+    .action(
+      async (
+        provider: string,
+        opts: OutputOptions & {
+          specFile: string;
+          apiName?: string;
+          branch: string;
+          write?: boolean;
+          org?: string;
+        },
+      ) => {
+        const outCtx = resolveOutputContext(opts);
+
+        if (provider.toLowerCase() !== "github") {
+          exit(ExitCode.USAGE, `Unsupported CI provider '${provider}'. Supported: github.`);
+        }
+
+        let authCtx;
+        try {
+          authCtx = requireOrgContext(opts.org);
+        } catch (e) {
+          exit(ExitCode.AUTH_MISSING, (e as Error).message);
+        }
+
+        const params = new URLSearchParams({
+          specFilePath: opts.specFile,
+          branch: opts.branch,
+        });
+        if (opts.apiName) params.set("apiName", opts.apiName);
+
+        const client = createOrgApiClient(authCtx);
+        try {
+          const res = (await client.getJson(
+            `/api-management/cli/v1/ci-config?${params.toString()}`,
+          )) as CiConfigResponse;
+
+          if (opts.write) {
+            const target = resolve(
+              process.cwd(),
+              res.filePath ?? ".github/workflows/spec0-publish.yml",
+            );
+            mkdirSync(dirname(target), { recursive: true });
+            writeFileSync(target, res.workflowYaml ?? "", "utf-8");
+            progress(outCtx, chalk.green(`wrote ${target}`));
+            emit(
+              outCtx,
+              { filePath: target, bytes: (res.workflowYaml ?? "").length },
+              (d) => `Workflow written to ${d.filePath} (${d.bytes} bytes).`,
+            );
+          } else {
+            // Dump the raw YAML on stdout so users can redirect to a file.
+            process.stdout.write(res.workflowYaml ?? "");
+          }
+        } catch (err) {
+          if (is401(err)) {
+            exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
+          }
+          exit(ExitCode.GENERIC, `ci generate failed: ${(err as Error).message}`);
+        }
+      },
+    );
+}
