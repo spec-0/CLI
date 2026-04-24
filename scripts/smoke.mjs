@@ -506,6 +506,36 @@ test("sync-status without ref or --api exits 2 (USAGE)", () => {
   assert(r.status === 2, `Expected exit 2 (USAGE), got ${r.status}`);
 });
 
+// ── auth typed-exit retrofit ─────────────────────────────────────────────────
+
+section("spec0 auth typed exits");
+
+test("auth token with no creds exits 3 (AUTH_MISSING)", () => {
+  const r = run(["auth", "token"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
+test("auth switch unknown-org exits 5 (NOT_FOUND)", () => {
+  const r = run(["auth", "switch", "definitely-not-an-org"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 5, `Expected exit 5 (NOT_FOUND), got ${r.status}`);
+});
+
 // ── diff / search / init / mcp typed-exit retrofit ───────────────────────────
 
 section("spec0 diff / search / init / mcp");

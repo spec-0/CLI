@@ -16,6 +16,7 @@ import {
   clearConfig,
 } from "../lib/config.js";
 import { resolvedPlatformAppUrl, resolvedPlatformApiUrl } from "../lib/platform-defaults.js";
+import { ExitCode, exit } from "../lib/exit-codes.js";
 
 function getAppUrl(): string {
   return resolvedPlatformAppUrl();
@@ -128,7 +129,10 @@ export function registerAuthCommands(program: Command) {
 
       if ("error" in result) {
         console.error(chalk.red(result.error));
-        process.exit(1);
+        // Login-flow failed mid-way (browser closed, timeout, port error). Not
+        // "no creds" — the user tried to authenticate and the flow couldn't
+        // complete. Treat as generic failure; callers see a non-zero exit.
+        exit(ExitCode.GENERIC);
       }
 
       const keyName = `CLI — ${new Date().toISOString().slice(0, 10)}`;
@@ -169,9 +173,9 @@ export function registerAuthCommands(program: Command) {
     .description("Print token (for scripting: spec0 auth token | pbcopy)")
     .action(async () => {
       const defaultOrgId = getDefaultOrgId();
-      if (!defaultOrgId) process.exit(1);
+      if (!defaultOrgId) exit(ExitCode.AUTH_MISSING);
       const org = getOrgConfig(defaultOrgId);
-      if (!org) process.exit(1);
+      if (!org) exit(ExitCode.AUTH_MISSING);
       console.log(org.apiKey);
     });
 
@@ -183,7 +187,7 @@ export function registerAuthCommands(program: Command) {
       const entry = Object.entries(config.orgs).find(([, o]) => o.name === orgName);
       if (!entry) {
         console.error(chalk.red(`Org '${orgName}' not found.`));
-        process.exit(1);
+        exit(ExitCode.NOT_FOUND);
       }
       setDefaultOrg(entry[0]);
       console.log(chalk.green(`Switched to org: ${orgName}`));
