@@ -1,0 +1,6 @@
+node_modules/
+dist/
+src/types.ts
+test/.jest-home/
+openapi-spec/
+package-lock.json
