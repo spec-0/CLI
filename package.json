@@ -17,6 +17,8 @@
     "pretest": "npm run build",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
+    "docs": "npm run build && node scripts/generate-docs.mjs write",
+    "docs:check": "npm run build && node scripts/generate-docs.mjs check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
