@@ -383,6 +383,51 @@ test("api changelog without auth exits 3 (AUTH_MISSING)", () => {
   assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
 });
 
+// ── doctor ────────────────────────────────────────────────────────────────────
+
+section("spec0 doctor");
+
+test("doctor --help exits 0", () => {
+  const r = run(["doctor", "--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+});
+
+test("doctor without auth exits 3 and lists missing token + orgId", () => {
+  const r = run(["doctor"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+  const out = r.stdout + r.stderr;
+  assert(out.includes("token"), "doctor output missing 'token'");
+  assert(out.includes("not set"), "doctor output missing '(not set)' marker");
+});
+
+test("doctor --output=json emits valid JSON with settings array", () => {
+  const r = run(["doctor", "--output=json"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  let parsed;
+  try {
+    parsed = JSON.parse(r.stdout);
+  } catch {
+    throw new Error(`Invalid JSON: ${r.stdout}`);
+  }
+  assert(Array.isArray(parsed.settings), "settings missing or not an array");
+  assert(parsed.ok === false, "ok should be false when token is missing");
+});
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 const total = passed + failed;
