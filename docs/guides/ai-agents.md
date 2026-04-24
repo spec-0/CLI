@@ -2,6 +2,23 @@
 
 The `spec0` CLI is designed so agents can use it without hardcoded knowledge. This guide describes how.
 
+## Set `SPEC0_MODE=agent`
+
+One env var flips every agent-friendly default in lockstep:
+
+```bash
+export SPEC0_MODE=agent
+```
+
+With it set, every invocation:
+
+- defaults `--output` to `json` (no need to pass it explicitly),
+- suppresses colour and spinners in both stdout and stderr,
+- skips the "new version available" update banner,
+- behaves as if `isTTY` were false regardless of the real terminal.
+
+Explicit flags still override — `spec0 doctor --output=text` works even with `SPEC0_MODE=agent`.
+
 ## The contract
 
 Three things you can rely on forever:

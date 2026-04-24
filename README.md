@@ -171,12 +171,13 @@ Two paths:
 1. **Interactive**: `spec0 auth login` writes `~/.config/spec0/config.json`.
 2. **Non-interactive**: export `SPEC0_TOKEN` and `SPEC0_ORG_ID`.
 
-| Variable        | Purpose                                                      | Default                      |
-| --------------- | ------------------------------------------------------------ | ---------------------------- |
-| `SPEC0_TOKEN`   | Bearer token sent on every request.                          | _required_ for non-auth cmds |
-| `SPEC0_ORG_ID`  | UUID of the org the CLI acts against.                        | _required_                   |
-| `SPEC0_API_URL` | Platform backend base URL.                                   | `https://api.spec0.io`       |
-| `SPEC0_APP_URL` | Platform web app (used for auth callback + dashboard links). | `https://spec0.io`           |
+| Variable        | Purpose                                                                                                                                                           | Default                      |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `SPEC0_TOKEN`   | Bearer token sent on every request.                                                                                                                               | _required_ for non-auth cmds |
+| `SPEC0_ORG_ID`  | UUID of the org the CLI acts against.                                                                                                                             | _required_                   |
+| `SPEC0_API_URL` | Platform backend base URL.                                                                                                                                        | `https://api.spec0.io`       |
+| `SPEC0_APP_URL` | Platform web app (used for auth callback + dashboard links).                                                                                                      | `https://spec0.io`           |
+| `SPEC0_MODE`    | Set to `agent` to flip every default for machine callers: JSON output, no colour, no spinners, no update banner. See the [agent guide](docs/guides/ai-agents.md). | _unset_ (human mode)         |
 
 `PLATFORM_*` variants are accepted for backwards compatibility; they'll be removed in the next major. Use `spec0 doctor` to see which source each value is resolving from.
 
