@@ -545,6 +545,55 @@ test("lint --save-ruleset with missing file exits 1", () => {
   assert(r.status === 1, `Expected exit 1, got ${r.status}`);
 });
 
+// ── commands (agent-discovery) ────────────────────────────────────────────────
+
+section("spec0 commands");
+
+test("commands --help exits 0", () => {
+  const r = run(["commands", "--help"]);
+  assert(r.status === 0, `exit ${r.status}`);
+});
+
+test("commands exits 0 and lists multiple commands", () => {
+  const r = run(["commands"]);
+  assert(r.status === 0, `exit ${r.status}`);
+  const out = r.stdout + r.stderr;
+  // Sanity: at least a handful of known commands should appear.
+  for (const cmd of ["publish", "mock create", "doctor", "api list"]) {
+    assert(out.includes(cmd), `commands output missing '${cmd}'`);
+  }
+});
+
+test("commands --output=json emits valid capability manifest", () => {
+  const r = run(["commands", "--output=json"]);
+  assert(r.status === 0, `exit ${r.status}`);
+  let parsed;
+  try {
+    parsed = JSON.parse(r.stdout);
+  } catch {
+    throw new Error(`Invalid JSON: ${r.stdout.slice(0, 200)}`);
+  }
+  assert(typeof parsed.version === "string", "manifest missing 'version'");
+  assert(Array.isArray(parsed.commands), "manifest 'commands' not an array");
+  assert(parsed.commands.length > 10, `expected >10 commands, got ${parsed.commands.length}`);
+  assert(typeof parsed.exitCodes === "object", "manifest missing 'exitCodes'");
+  assert(parsed.exitCodes["3"] !== undefined, "exit code 3 missing from table");
+  // Spot-check a command entry has the expected shape.
+  const publish = parsed.commands.find((c) => c.name === "publish");
+  assert(publish, "'publish' missing from manifest");
+  assert(Array.isArray(publish.flags), "publish.flags not an array");
+});
+
+test("commands <pattern> filters by substring", () => {
+  const r = run(["commands", "mock", "--output=json"]);
+  assert(r.status === 0, `exit ${r.status}`);
+  const parsed = JSON.parse(r.stdout);
+  assert(parsed.commands.length >= 3, `expected >=3 mock commands, got ${parsed.commands.length}`);
+  for (const c of parsed.commands) {
+    assert(c.name.toLowerCase().includes("mock"), `non-matching command '${c.name}' in filter`);
+  }
+});
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 const total = passed + failed;

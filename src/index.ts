@@ -18,6 +18,7 @@ import { registerApiCommands } from "./commands/api/index.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerSyncStatusCommand } from "./commands/sync-status.js";
 import { registerCiCommands } from "./commands/ci/index.js";
+import { registerCommandsCommand } from "./commands/commands.js";
 import { getCliVersion } from "./lib/version.js";
 import { notifyUpdateIfAvailable } from "./lib/update-check.js";
 
@@ -46,6 +47,7 @@ registerApiCommands(program);
 registerDoctorCommand(program);
 registerSyncStatusCommand(program);
 registerCiCommands(program);
+registerCommandsCommand(program);
 
 notifyUpdateIfAvailable(getCliVersion());
 
