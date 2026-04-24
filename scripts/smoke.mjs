@@ -227,6 +227,7 @@ test("mock --help shows only implemented subcommands", () => {
   const out = r.stdout + r.stderr;
   assert(out.includes("create"), "mock create missing");
   assert(out.includes("list"), "mock list missing");
+  assert(out.includes("show"), "mock show missing");
   assert(out.includes("url"), "mock url missing");
   assert(!out.includes("delete"), "'mock delete' stub should be removed");
   assert(!out.includes("regenerate-key"), "'mock regenerate-key' stub should be removed");
@@ -235,6 +236,44 @@ test("mock --help shows only implemented subcommands", () => {
 
 test("mock list without auth exits 3 (AUTH_MISSING)", () => {
   const r = run(["mock", "list"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
+test("mock create without --api exits 2 (USAGE)", () => {
+  const r = run(["mock", "create"], {
+    env: { SPEC0_TOKEN: "tok", SPEC0_ORG_ID: "org" },
+  });
+  assert(r.status === 2, `Expected exit 2 (USAGE), got ${r.status}`);
+});
+
+test("mock create without auth exits 3 (AUTH_MISSING)", () => {
+  const r = run(["mock", "create", "--api", "foo"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
+test("mock show --help mentions --output", () => {
+  const r = run(["mock", "show", "--help"]);
+  assert((r.stdout + r.stderr).includes("--output"), "mock show missing --output");
+});
+
+test("mock show without auth exits 3 (AUTH_MISSING)", () => {
+  const r = run(["mock", "show", "foo"], {
     env: {
       SPEC0_TOKEN: "",
       SPEC0_ORG_ID: "",

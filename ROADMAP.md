@@ -33,6 +33,9 @@ Goal: every API-management operation available in the spec0 web app should be sc
 ### P2 — Subscribers, richer mock control, quality gates
 
 - `spec0 api subscribers list <ref>` / `spec0 subscribers pending|approve|reject`
+- `spec0 mock show <api>` — structured view of a single mock server. ✅ shipped.
+- `spec0 mock refresh <api>` — re-provision mock against the latest spec. **Blocked**: backend needs a `POST /mocks/{id}/refresh` (or equivalent) endpoint.
+- `spec0 mock delete <api>` — remove mock server. **Blocked**: backend needs `DELETE /api-management/cli/v1/mocks/{id}` on the CLI surface.
 - `spec0 mock configure <api> --strategy ...` / `mock variants add` / `mock logs --tail`
 - `spec0 quality score <ref> --min-score N` — fail the pipeline below threshold
 
