@@ -4,3 +4,7 @@ src/types.ts
 test/.jest-home/
 openapi-spec/
 package-lock.json
+
+# Machine-generated from `spec0 commands --output=json`. Single source of truth
+# is scripts/generate-docs.mjs; see docs:check CI.
+docs/commands/

@@ -205,6 +205,10 @@ The same table is emitted by `spec0 commands --output=json`.
 
 ---
 
+## Reference
+
+- [**Full command reference**](docs/commands/README.md) — auto-generated per-command pages with every flag, argument, and exit code. Regenerated from the live binary via `npm run docs`.
+
 ## Guides
 
 - [Getting started](docs/guides/getting-started.md) — zero to published.
