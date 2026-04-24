@@ -65,3 +65,28 @@ npm run sync:spec
 That runs `spec0 pull spec0/cli-api -o openapi-spec/cli-api-spec.yaml` and regenerates `src/types.ts`. Commit the updated YAML + types alongside the feature that consumes them.
 
 `sync:spec` calls into `dist/index.js`, so run `npm run build` first on fresh clones. Auth via `SPEC0_TOKEN` + `SPEC0_ORG_ID` env vars, or `spec0 auth login` for interactive use.
+
+## Cutting a release
+
+Releases are tag-triggered. The workflow at `.github/workflows/release.yml` lints, builds, tests, then publishes to npm via Trusted Publishing (no `NPM_TOKEN`) and creates a GitHub Release. The tag must match `package.json` `version` exactly — otherwise the workflow fails.
+
+From a clean `main` that is green on CI:
+
+```bash
+# 1. Bump package.json + package-lock.json AND create the tag in one step.
+#    Use -m so the commit message is conventional-commits compliant (commitlint).
+npm version patch -m "chore(release): v%s"   # or: minor / major / X.Y.Z
+
+# 2. Push the bump commit and the new tag together.
+git push origin main --follow-tags
+```
+
+`npm version` writes the new version into both files, makes a commit `chore(release): vX.Y.Z`, and creates tag `vX.Y.Z`. The tag push triggers the workflow.
+
+**Watch the run:** `gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId --jq '.[0].databaseId') --exit-status`
+
+**Verify on npm:** `npm view @spec0/cli version` should print the new version.
+
+If the publish step fails, do **not** retry by reusing the same tag. Fix the issue on `main`, then bump again (`npm version patch -m ...`) — npm forbids re-publishing the same `version`, so a new one is mandatory.
+
+See [RELEASE.md](./RELEASE.md) for the full policy (versioning rules, trusted-publisher config, yanking).
