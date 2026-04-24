@@ -6,6 +6,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { createOrgApiClient, is401 } from "../lib/api-client.js";
 import { requireOrgContext } from "../lib/auth-context.js";
+import { ExitCode, exit, exitCodeForHttpStatus } from "../lib/exit-codes.js";
 
 export function registerSearchCommand(program: Command) {
   program
@@ -21,7 +22,7 @@ export function registerSearchCommand(program: Command) {
           ctx = requireOrgContext(opts.org);
         } catch (e) {
           console.error(chalk.red((e as Error).message));
-          process.exit(1);
+          exit(ExitCode.AUTH_MISSING);
         }
         const client = createOrgApiClient(ctx);
         try {
@@ -57,10 +58,11 @@ export function registerSearchCommand(program: Command) {
         } catch (err) {
           if (is401(err)) {
             console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
-            process.exit(1);
+            exit(ExitCode.AUTH_MISSING);
           }
+          const status = (err as { response?: { statusCode?: number } })?.response?.statusCode;
           console.error(chalk.red(`Search failed: ${(err as Error).message}`));
-          process.exit(1);
+          exit(status ? exitCodeForHttpStatus(status) : ExitCode.GENERIC);
         }
       },
     );

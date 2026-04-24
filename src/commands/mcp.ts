@@ -6,6 +6,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import got from "got";
 import { getDefaultOrgId, getOrgConfig } from "../lib/config.js";
+import { ExitCode, exit, exitCodeForHttpStatus } from "../lib/exit-codes.js";
 
 export function registerMcpCommands(program: Command) {
   const mcp = program.command("mcp").description("MCP server URL and config");
@@ -17,7 +18,7 @@ export function registerMcpCommands(program: Command) {
       const orgId = process.env.PLATFORM_ORG_ID ?? getDefaultOrgId();
       if (!orgId || !getOrgConfig(orgId)) {
         console.error(chalk.red("Not authenticated. Run 'spec0 auth login'."));
-        process.exit(1);
+        exit(ExitCode.AUTH_MISSING);
       }
       const org = getOrgConfig(orgId)!;
       const mcpUrl = `https://mcp.spec0.io/org/${orgId}/mcp`;
@@ -48,7 +49,7 @@ export function registerMcpCommands(program: Command) {
       const orgId = process.env.PLATFORM_ORG_ID ?? getDefaultOrgId();
       if (!orgId || !getOrgConfig(orgId)) {
         console.error(chalk.red("Not authenticated. Run 'spec0 auth login'."));
-        process.exit(1);
+        exit(ExitCode.AUTH_MISSING);
       }
       const org = getOrgConfig(orgId)!;
       const base = org.apiUrl.replace(/\/$/, "");
@@ -59,8 +60,9 @@ export function registerMcpCommands(program: Command) {
         });
         console.log(chalk.green("MCP gateway OK:"), res.body);
       } catch (e) {
+        const status = (e as { response?: { statusCode?: number } })?.response?.statusCode;
         console.error(chalk.red("MCP health check failed:"), (e as Error).message);
-        process.exit(1);
+        exit(status ? exitCodeForHttpStatus(status) : ExitCode.NETWORK_ERROR);
       }
     });
 }

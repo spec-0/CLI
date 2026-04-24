@@ -506,6 +506,49 @@ test("sync-status without ref or --api exits 2 (USAGE)", () => {
   assert(r.status === 2, `Expected exit 2 (USAGE), got ${r.status}`);
 });
 
+// ── diff / search / init / mcp typed-exit retrofit ───────────────────────────
+
+section("spec0 diff / search / init / mcp");
+
+test("diff without auth exits 3 (AUTH_MISSING)", () => {
+  const r = run(["diff", "a.yaml", "b.yaml"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
+test("search without auth exits 3 (AUTH_MISSING)", () => {
+  const r = run(["search", "query"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
+test("mcp url without auth exits 3 (AUTH_MISSING)", () => {
+  const r = run(["mcp", "url"], {
+    env: {
+      SPEC0_TOKEN: "",
+      SPEC0_ORG_ID: "",
+      PLATFORM_API_TOKEN: "",
+      PLATFORM_ORG_ID: "",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+});
+
 // ── ci generate ───────────────────────────────────────────────────────────────
 
 section("spec0 ci generate");
