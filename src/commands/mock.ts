@@ -4,9 +4,11 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import Table from "cli-table3";
 import { createOrgApiClient, is401 } from "../lib/api-client.js";
 import { requireOrgContext } from "../lib/auth-context.js";
+import { ExitCode, exit } from "../lib/exit-codes.js";
+import { emit, resolveOutputContext, type OutputOptions } from "../lib/output/index.js";
+import { renderTable } from "../lib/output/table.js";
 import type { components, paths } from "../types.js";
 
 type MockRow = components["schemas"]["MockItem"];
@@ -69,32 +71,35 @@ export function registerMockCommands(program: Command) {
     .command("list")
     .description("List all mock servers")
     .option("--org <uuid>", "Org id override")
-    .action(async (opts: { org?: string }) => {
-      let ctx;
+    .option("--output <format>", "Output format: text, json, or yaml (default: text)")
+    .action(async (opts: OutputOptions & { org?: string }) => {
+      const outCtx = resolveOutputContext(opts);
+      let authCtx;
       try {
-        ctx = requireOrgContext(opts.org);
+        authCtx = requireOrgContext(opts.org);
       } catch (e) {
-        console.error(chalk.red((e as Error).message));
-        process.exit(1);
+        exit(ExitCode.AUTH_MISSING, (e as Error).message);
       }
-      const client = createOrgApiClient(ctx);
+      const client = createOrgApiClient(authCtx);
       try {
         const rows = (await client.getJson("/api-management/cli/v1/mocks")) as MockRow[];
-        const table = new Table({
-          head: ["API", "Name", "Mock URL"],
-        });
-        for (const m of rows) {
-          const label = m.apiName ?? m.apiId ?? "-";
-          table.push([label, m.name ?? "-", `${ctx.apiUrl}${m.mockBaseUrl ?? ""}`]);
-        }
-        console.log(table.toString());
+        const enriched = rows.map((m) => ({
+          api: m.apiName ?? m.apiId ?? "—",
+          name: m.name ?? "—",
+          mockUrl: `${authCtx.apiUrl}${m.mockBaseUrl ?? ""}`,
+        }));
+        emit(outCtx, enriched, (data) =>
+          renderTable(data as unknown as Record<string, unknown>[], [
+            { key: "api", header: "API" },
+            { key: "name", header: "Name" },
+            { key: "mockUrl", header: "Mock URL" },
+          ]),
+        );
       } catch (err) {
         if (is401(err)) {
-          console.error(chalk.red("Token invalid. Run 'spec0 auth login'."));
-          process.exit(1);
+          exit(ExitCode.AUTH_MISSING, "Token invalid or expired. Run 'spec0 auth login'.");
         }
-        console.error(chalk.red((err as Error).message));
-        process.exit(1);
+        exit(ExitCode.GENERIC, (err as Error).message);
       }
     });
 
