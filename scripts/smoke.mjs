@@ -19,7 +19,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 const bin = resolve(root, "dist", "index.js");
 const validSpec = resolve(root, "test", "fixtures", "valid-spec.yaml");
-const invalidSpec = resolve(root, "test", "fixtures", "invalid-spec.yaml");
+const _invalidSpec = resolve(root, "test", "fixtures", "invalid-spec.yaml");
 
 // ── Runner ───────────────────────────────────────────────────────────────────
 
@@ -144,7 +144,10 @@ test("push without auth exits 1 and references SPEC0_TOKEN", () => {
   });
   assert(r.status === 1, `Expected exit 1, got ${r.status}`);
   const out = r.stdout + r.stderr;
-  assert(out.includes("SPEC0_TOKEN") || out.includes("auth login"), `Error should mention SPEC0_TOKEN or auth login. Got: ${out}`);
+  assert(
+    out.includes("SPEC0_TOKEN") || out.includes("auth login"),
+    `Error should mention SPEC0_TOKEN or auth login. Got: ${out}`,
+  );
 });
 
 test("push --dry-run with valid spec and SPEC0_TOKEN set exits 0", () => {
@@ -264,7 +267,10 @@ test("auth status when not logged in exits 0 and shows guidance", () => {
   });
   assert(r.status === 0, `Expected exit 0, got ${r.status}`);
   const out = r.stdout + r.stderr;
-  assert(out.toLowerCase().includes("not logged in") || out.includes("auth login"), `Unexpected output: ${out}`);
+  assert(
+    out.toLowerCase().includes("not logged in") || out.includes("auth login"),
+    `Unexpected output: ${out}`,
+  );
 });
 
 test("whoami when not logged in exits 0 and shows guidance", () => {
@@ -279,7 +285,10 @@ test("whoami when not logged in exits 0 and shows guidance", () => {
   });
   assert(r.status === 0, `Expected exit 0, got ${r.status}`);
   const out = r.stdout + r.stderr;
-  assert(out.toLowerCase().includes("not logged in") || out.includes("auth login"), `Unexpected output: ${out}`);
+  assert(
+    out.toLowerCase().includes("not logged in") || out.includes("auth login"),
+    `Unexpected output: ${out}`,
+  );
 });
 
 test("auth status mentions SPEC0_TOKEN env var for CI guidance", () => {
@@ -307,7 +316,10 @@ test("SPEC0_TOKEN recognized — reaches auth step (not 'not authenticated')", (
   const out = r.stdout + r.stderr;
   // Should fail with a network error (can't reach server), NOT an auth missing error
   assert(!out.includes("Not authenticated"), `Should not say 'Not authenticated': ${out}`);
-  assert(!out.includes("Run 'spec0 auth login'"), `Should not prompt login when env vars are set: ${out}`);
+  assert(
+    !out.includes("Run 'spec0 auth login'"),
+    `Should not prompt login when env vars are set: ${out}`,
+  );
 });
 
 // ── Summary ───────────────────────────────────────────────────────────────────
