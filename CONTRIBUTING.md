@@ -37,6 +37,10 @@ See [ROADMAP.md](./ROADMAP.md) for the full design principles. The short version
 - All I/O goes through `src/lib/`. Tests inject fakes; no live network in unit tests.
 - `--output=text|json|yaml` and stable exit codes are part of every command's contract.
 
+## Releases
+
+See [RELEASE.md](./RELEASE.md). Releases are tag-triggered: push a `vX.Y.Z` tag on `main` and the workflow publishes to npm + cuts a GitHub release.
+
 ## Code of conduct
 
 Be respectful. We follow the [Contributor Covenant](https://www.contributor-covenant.org/version/2/1/code_of_conduct/) in spirit; a formal `CODE_OF_CONDUCT.md` will land if and when the contributor base grows.
