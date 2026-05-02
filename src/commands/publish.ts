@@ -262,8 +262,11 @@ export function registerPublishCommand(program: Command) {
         };
 
         try {
+          // Public-registry publish moved off the legacy /cli/v1/* surface to the versioned
+          // /api/v1/public/* surface (which has scope checks, rate limiting, and a stable API
+          // contract). Same request/response shape; only the path differs.
           const reg = (await client.postJson(
-            "/api-management/cli/v1/public-publish",
+            "/api-management/api/v1/public/apis",
             body,
           )) as PublicPublishResponse;
 
