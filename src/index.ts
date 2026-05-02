@@ -39,7 +39,15 @@ program
   .name("spec0")
   .description("Manage and publish OpenAPI specs, run mock servers, and lint — powered by Spec0")
   .version(getCliVersion(), "-V, --version", "Print CLI version")
-  .helpOption("-h, --help", "Show help");
+  .helpOption("-h, --help", "Show help")
+  // Without this, Commander parses every option in argv at the program level first,
+  // including options that appear AFTER the subcommand name. That makes the program-level
+  // `--version` option swallow the subcommand-level `--version <value>` option used by
+  // `spec0 publish` and `spec0 push`: invoking `spec0 publish --version 1.0.0` would print
+  // the CLI's own version and exit with code 0, never running publish. With positional
+  // options enabled, options after the subcommand belong to the subcommand parser and the
+  // collision goes away.
+  .enablePositionalOptions();
 
 registerVersionCommand(program);
 registerAuthCommands(program);
