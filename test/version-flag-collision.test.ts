@@ -109,7 +109,7 @@ describe("--version flag does not collide between program and subcommands", () =
     expect(r.stdout).toMatch(/version=1\.0\.0/);
   });
 
-  it("`spec0 publish` without --version still surfaces the required-option error", () => {
+  it("`spec0 publish` without --version or --bump fails with a clear error", () => {
     const r = run([
       "publish",
       specPath,
@@ -119,7 +119,71 @@ describe("--version flag does not collide between program and subcommands", () =
       "--dry-run",
     ]);
     expect(r.status).not.toBe(0);
-    // Commander prints the required-option error to stderr.
-    expect(r.stderr).toMatch(/required option '--version/);
+    // Either is required since --bump landed alongside --version.
+    expect(r.stderr).toMatch(/--version.*--bump|--bump.*--version/);
+  });
+
+  it("`spec0 publish --bump minor` runs publish without --version", () => {
+    const r = run([
+      "publish",
+      specPath,
+      "--name",
+      "regression-fixture",
+      "--skip-lint",
+      "--dry-run",
+      "--bump",
+      "minor",
+    ]);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/Dry run/);
+    expect(r.stdout).toMatch(/bump=minor/);
+  });
+
+  it("`spec0 publish --bump patch` accepts patch as an alternative to minor", () => {
+    const r = run([
+      "publish",
+      specPath,
+      "--name",
+      "regression-fixture",
+      "--skip-lint",
+      "--dry-run",
+      "--bump",
+      "patch",
+    ]);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/bump=patch/);
+  });
+
+  it("`spec0 publish` with both --version and --bump fails with mutually-exclusive error", () => {
+    const r = run([
+      "publish",
+      specPath,
+      "--name",
+      "regression-fixture",
+      "--skip-lint",
+      "--dry-run",
+      "--version",
+      "1.0.0",
+      "--bump",
+      "minor",
+    ]);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/mutually exclusive/);
+  });
+
+  it("`spec0 publish --bump major` is rejected with a pointer to the policy", () => {
+    const r = run([
+      "publish",
+      specPath,
+      "--name",
+      "regression-fixture",
+      "--skip-lint",
+      "--dry-run",
+      "--bump",
+      "major",
+    ]);
+    expect(r.status).not.toBe(0);
+    // Per Spec0 versioning policy, breaking changes create a new API rather than bumping major.
+    expect(r.stderr).toMatch(/MAJOR.*not supported|breaking changes create a new API/i);
   });
 });
