@@ -127,8 +127,12 @@ function renderIndex(commands) {
     "> Auto-generated from the `spec0 commands --output=json` manifest. Do not edit by hand.",
   );
   lines.push("");
+  // Don't pin a version in the prose — the version-stamped output drifts on
+  // every release and there's nothing actionable for readers in the number
+  // (they get it from `npm` or `spec0 --version`). Keep the command count
+  // since it's recomputed from the manifest on every regen and stays accurate.
   lines.push(
-    `\`spec0 ${manifest.version}\` exposes ${commands.length} commands. Each page describes the flags and arguments for a single command.`,
+    `\`@spec0/cli\` exposes ${commands.length} commands. Each page describes the flags and arguments for a single command.`,
   );
   lines.push("");
   lines.push("| Command | Description |");

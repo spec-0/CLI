@@ -2,7 +2,7 @@
 
 > Auto-generated from the `spec0 commands --output=json` manifest. Do not edit by hand.
 
-`spec0 0.1.4` exposes 29 commands. Each page describes the flags and arguments for a single command.
+`@spec0/cli` exposes 29 commands. Each page describes the flags and arguments for a single command.
 
 | Command | Description |
 | --- | --- |
