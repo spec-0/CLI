@@ -19,14 +19,17 @@ import { ExitCode, exit, exitCodeForHttpStatus } from "../lib/exit-codes.js";
 import { resolveCliSpecPathFromFlags } from "../lib/cli-spec-path.js";
 import { resolvedPlatformApiUrl } from "../lib/platform-defaults.js";
 
-// Types for the public-publish API (mirrors public-registry-api-spec.yaml schemas)
+// Types for the public-publish API (mirrors public-registry-api-spec.yaml schemas).
+// Exactly one of `version` / `versionBump` must be set; the server enforces this
+// (returning 400 if both or neither are provided).
 interface PublicPublishRequest {
   publicApiId?: string;
   apiSlug?: string;
   title?: string;
   description?: string;
   visibility?: string;
-  version: string;
+  version?: string;
+  versionBump?: "MINOR" | "PATCH";
   openapiSpec: string;
   gitSha?: string;
   releaseNotes?: string;
@@ -56,10 +59,13 @@ function toSlug(input: string): string {
 function publishUsageExamples(): string {
   return [
     "Examples:",
-    "  spec0 publish --spec-file ./openapi.yaml --name payments-api --version v1.0.0",
-    "  spec0 publish ./openapi.yaml --name payments-api --version v1.0.0 --visibility published",
-    "  spec0 publish --spec-file ./openapi.yaml --public-api-id <uuid> --version v1.1.0",
-    "  spec0 publish ./openapi.yaml --version v1.0.0  # slug inferred from spec info.title",
+    "  spec0 publish --spec-file ./openapi.yaml --name payments-api --version 1.0.0",
+    "  spec0 publish ./openapi.yaml --name payments-api --bump minor --visibility published",
+    "  spec0 publish --spec-file ./openapi.yaml --public-api-id <uuid> --bump patch",
+    "  spec0 publish ./openapi.yaml --version 1.0.0  # slug inferred from spec info.title",
+    "",
+    "Use --version to pin an explicit semver tag, or --bump to let the registry compute",
+    "the next version atomically (preferred for CI: avoids races on concurrent publishes).",
   ].join("\n");
 }
 
@@ -94,7 +100,11 @@ export function registerPublishCommand(program: Command) {
     )
     .option("--title <title>", "Human-readable display title. Defaults to --name if omitted.")
     .option("--description <text>", "Short description of the API")
-    .requiredOption("--version <version>", "Version tag (e.g. v1.0.0)")
+    .option("--version <version>", "Explicit semver tag for this version (e.g. 1.0.0)")
+    .option(
+      "--bump <type>",
+      "Server-computed bump: minor | patch. Mutually exclusive with --version.",
+    )
     .option(
       "--visibility <state>",
       "Visibility: draft | published | unlisted (default: published)",
@@ -135,13 +145,51 @@ export function registerPublishCommand(program: Command) {
         const nameOpt = opts.name as string | undefined;
         const titleOpt = opts.title as string | undefined;
         const description = opts.description as string | undefined;
-        const version = opts.version as string;
+        const version = opts.version as string | undefined;
+        const bumpRaw = opts.bump as string | undefined;
         const visibilityRaw = (opts.visibility as string) ?? "published";
         const releaseNotes = opts["releaseNotes"] as string | undefined;
         const gitSha = (opts["gitSha"] as string | undefined) ?? "";
         const strict = !!(opts.strict as boolean);
         const skipLint = !!(opts.skipLint as boolean);
         const format = (opts.format as string) ?? "text";
+
+        // -----------------------------------------------------------------------
+        // Validate version / bump (exactly one required, mutually exclusive)
+        // -----------------------------------------------------------------------
+        const hasVersion = typeof version === "string" && version.trim().length > 0;
+        const hasBump = typeof bumpRaw === "string" && bumpRaw.trim().length > 0;
+        if (hasVersion && hasBump) {
+          console.error(
+            chalk.red("--version and --bump are mutually exclusive — use exactly one."),
+          );
+          exit(ExitCode.USAGE);
+        }
+        if (!hasVersion && !hasBump) {
+          console.error(
+            chalk.red(
+              "Either --version <semver> or --bump <minor|patch> is required.\n" +
+                "Use --version to pin an explicit tag, or --bump to let the registry compute the next.",
+            ),
+          );
+          exit(ExitCode.USAGE);
+        }
+        let versionBump: "MINOR" | "PATCH" | undefined;
+        if (hasBump) {
+          const normalized = (bumpRaw as string).trim().toUpperCase();
+          if (normalized !== "MINOR" && normalized !== "PATCH") {
+            console.error(
+              chalk.red(
+                `Invalid --bump '${bumpRaw}'. Must be: minor | patch.\n` +
+                  "MAJOR is intentionally not supported — per Spec0's versioning policy,\n" +
+                  "breaking changes create a new API rather than bumping the major version.\n" +
+                  "See https://spec0.io/docs/apis/versioning",
+              ),
+            );
+            exit(ExitCode.USAGE);
+          }
+          versionBump = normalized as "MINOR" | "PATCH";
+        }
 
         // Validate visibility
         const validVisibilities = ["draft", "published", "unlisted"];
@@ -236,9 +284,12 @@ export function registerPublishCommand(program: Command) {
         }
 
         if (opts.dryRun) {
+          const versionDesc = hasVersion
+            ? `version=${version}`
+            : `bump=${versionBump?.toLowerCase()}`;
           console.log(
             chalk.green(
-              `Dry run — would publish apiSlug=${apiSlug ?? "-"} version=${version} visibility=${visibility}`,
+              `Dry run — would publish apiSlug=${apiSlug ?? "-"} ${versionDesc} visibility=${visibility}`,
             ),
           );
           return;
@@ -255,7 +306,8 @@ export function registerPublishCommand(program: Command) {
           title,
           description,
           visibility,
-          version,
+          version: hasVersion ? version : undefined,
+          versionBump,
           openapiSpec,
           gitSha: gitSha || undefined,
           releaseNotes: releaseNotes || undefined,
@@ -275,6 +327,10 @@ export function registerPublishCommand(program: Command) {
           const resolvedApiId = reg.publicApiId ?? "";
           const resolvedPublicUrl = reg.publicUrl ?? `/public/registry/-/${apiSlug ?? ""}`;
           const apiBaseUrl = resolvedPlatformApiUrl();
+          // The server returns the *resolved* version — the explicit tag the caller
+          // sent, OR the server-computed bump when `--bump` was used. Always prefer
+          // it over the local `version` variable (which is undefined under --bump).
+          const resolvedVersion = reg.version ?? version ?? "";
 
           if (format === "json") {
             console.log(
@@ -283,7 +339,7 @@ export function registerPublishCommand(program: Command) {
                   publicApiId: resolvedApiId,
                   apiSlug: reg.apiSlug ?? apiSlug,
                   orgSlug: reg.orgSlug,
-                  version,
+                  version: resolvedVersion,
                   visibility: reg.visibility ?? visibility,
                   created: reg.created ?? false,
                   versionCreated: reg.versionCreated ?? false,
@@ -297,7 +353,7 @@ export function registerPublishCommand(program: Command) {
             console.log(
               formatPublishPublicText({
                 publicApiId: resolvedApiId,
-                version,
+                version: resolvedVersion,
                 visibility: reg.visibility ?? visibility,
                 publicUrl: resolvedPublicUrl,
                 apiUrl: apiBaseUrl,
@@ -320,9 +376,10 @@ export function registerPublishCommand(program: Command) {
           }
           const statusCode = (err as { response?: { statusCode?: number } })?.response?.statusCode;
           if (statusCode === 409) {
+            const conflictTag = version ?? "(server-computed)";
             console.error(
               chalk.red(
-                `Version conflict: version tag '${version}' already exists with different content.`,
+                `Version conflict: version tag '${conflictTag}' already exists with different content.`,
               ),
             );
             console.error(chalk.yellow("Use a new version tag (e.g. bump the patch version)."));
