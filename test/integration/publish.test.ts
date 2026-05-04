@@ -76,7 +76,6 @@ async function cleanupPublicApi(publicApiId: string): Promise<void> {
   try {
     await PublicApisService.deletePublicApi({ publicApiId });
   } catch (err) {
-     
     console.warn(
       `[cleanup] failed to delete public API ${publicApiId}: ${(err as Error).message ?? err}`,
     );
@@ -126,7 +125,6 @@ describeFn("staging integration: spec0 publish", () => {
 
     // On failure, surface stderr so the workflow log explains why.
     if (r.status !== 0) {
-       
       console.error(`[publish] stdout:\n${r.stdout}\n[publish] stderr:\n${r.stderr}`);
     }
     expect(r.status).toBe(0);
