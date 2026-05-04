@@ -107,13 +107,24 @@ describeFn("staging integration: spec0 mock", () => {
     // launch this is acceptable; tracked as a follow-up to add a delete-team-
     // api endpoint or extend the existing softDelete.
     configureSdkForStaging();
-    await PublicApisService.publishTeamApi({
-      requestBody: {
-        name: apiSlug,
-        version: "0.1.0",
-        openapiSpec: MINIMAL_SPEC,
-      },
-    });
+    try {
+      await PublicApisService.publishTeamApi({
+        requestBody: {
+          name: apiSlug,
+          version: "0.1.0",
+          openapiSpec: MINIMAL_SPEC,
+        },
+      });
+    } catch (err) {
+      // Surface the response body so backend errors aren't swallowed as a
+      // generic "ApiError: Internal Server Error" — drives diagnosis on
+      // failures.
+      const e = err as { status?: number; statusText?: string; body?: unknown };
+      console.error(
+        `[publishTeamApi] failed status=${e.status} statusText=${e.statusText} body=${JSON.stringify(e.body)}`,
+      );
+      throw err;
+    }
     // publishTeamApi's response shape doesn't include a stable id we can use
     // for cleanup; we rely on `apiSlug` for downstream lookups instead.
   }, 30_000);
