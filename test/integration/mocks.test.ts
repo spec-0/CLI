@@ -11,20 +11,23 @@
  *   1. `mock list` round-trips against the live `/api/v1/public/mocks` endpoint
  *      with exit 0 and a parseable JSON envelope.
  *   2. `mock create --api <slug>` provisions a mock for a freshly-published
- *      public API (set up in `beforeAll`) and returns the URL + one-time key.
+ *      team-scoped API (set up in `beforeAll` via `publishTeamApi`) and
+ *      returns the URL + one-time key.
  *   3. `mock show <api>` and `mock url <api>` both find the mock created in (2)
  *      via the same `listPublicMocks` wire path.
  *
+ * Why team-scoped publish (not public publish):
+ *   The mock-create endpoint resolves an `ApiEntity` (the team-scoped registry
+ *   that `spec0 push` writes to) — NOT a `PublicApiEntity` (what `spec0 publish`
+ *   writes to). They're separate tables. The fixture must use `publishTeamApi`
+ *   so mock-create's lookup actually finds the API.
+ *
  * Cleanup:
- *   - `afterAll` soft-deletes the helper public API via
- *     `PublicApisService.deletePublicApi`. The platform's `softDelete` only
- *     marks the API row deleted; it does NOT cascade to
- *     `ApiMockServerAssociationEntity` or the `mock_servers` table. The mock
- *     created in (2) is therefore orphaned in staging — see PR description for
- *     the TODO. There is no public delete-mock SDK call to invoke yet (Phase 2
- *     work in the platform repo).
- *   - We pin visibility=DRAFT on the helper API so even the leaked rows stay
- *     out of the public registry surface.
+ *   No-op. Neither team-scoped APIs nor mock servers have a public V1 delete
+ *   endpoint today. Each successful run leaks one ApiEntity row + one
+ *   mock-server row. Pre-launch this is acceptable; tracked as a follow-up to
+ *   add the missing delete endpoints. Per-run unique slugs (`Date.now()`-
+ *   suffixed) keep collisions impossible.
  */
 import { OpenAPI, PublicApisService } from "@spec0/sdk-public-platform";
 import { runCli } from "./runCli";
@@ -77,25 +80,11 @@ interface MockShowJsonOutput {
 }
 
 /** Sets up the SDK's global config the same way `configureSdkAuth` does in the
- *  CLI. Used both by the publish helper (in `beforeAll`) and the cleanup path. */
+ *  CLI. Used by the team-api publish helper in `beforeAll`. */
 function configureSdkForStaging(): void {
   OpenAPI.BASE = `${stagingEnv.apiUrl}/api-management`;
   OpenAPI.TOKEN = stagingEnv.token;
   OpenAPI.HEADERS = { "X-Org-Id": stagingEnv.orgId };
-}
-
-/** Best-effort cleanup. Logs but doesn't throw, so a transient delete failure
- *  doesn't mask the real test failure. */
-async function cleanupPublicApi(publicApiId: string): Promise<void> {
-  if (!STAGING_ENV_AVAILABLE) return;
-  configureSdkForStaging();
-  try {
-    await PublicApisService.deletePublicApi({ publicApiId });
-  } catch (err) {
-    console.warn(
-      `[cleanup] failed to delete public API ${publicApiId}: ${(err as Error).message ?? err}`,
-    );
-  }
 }
 
 const describeFn = STAGING_ENV_AVAILABLE ? describe : describe.skip;
@@ -104,34 +93,34 @@ describeFn("staging integration: spec0 mock", () => {
   // Per-test-run unique slug so re-runs don't collide. Date.now() ms precision
   // is sufficient — the workflow is manual-trigger, not parallel.
   const apiSlug = `cli-mock-staging-${Date.now()}`;
-  let publicApiId: string | null = null;
 
   beforeAll(async () => {
-    // Publish a temporary public API (DRAFT visibility) directly via the SDK so
-    // the `mock create` test has a real `apiName` to attach to. We pass the
-    // spec as an inline string — same pattern as `publish.test.ts`, but here we
-    // don't need a tmp file because we're calling the SDK directly.
+    // Mock-create's lookup hits ApiEntity (the team-scoped registry that
+    // `spec0 push` writes to) — NOT PublicApiEntity (the public registry that
+    // `spec0 publish` writes to). They're separate tables. So we publish via
+    // `publishTeamApi` here (Phase 2's V1 wrapper around the legacy
+    // /cli/v1/publish flow) rather than `publishPublicApi`.
+    //
+    // Cleanup: there's no public V1 endpoint to delete a team-scoped API yet
+    // (the platform's `softDelete` flow is for PublicApiEntity only). Test
+    // runs leak one ApiEntity row + one mock-server row per execution. Pre-
+    // launch this is acceptable; tracked as a follow-up to add a delete-team-
+    // api endpoint or extend the existing softDelete.
     configureSdkForStaging();
-    const res = await PublicApisService.publishPublicApi({
+    await PublicApisService.publishTeamApi({
       requestBody: {
-        apiSlug,
-        title: apiSlug,
-        description: "spec0-cli mocks integration test fixture",
-        visibility: "DRAFT",
+        name: apiSlug,
         version: "0.1.0",
         openapiSpec: MINIMAL_SPEC,
       },
     });
-    if (!res.publicApiId) {
-      throw new Error(`fixture publish returned no publicApiId: ${JSON.stringify(res)}`);
-    }
-    publicApiId = res.publicApiId;
+    // publishTeamApi's response shape doesn't include a stable id we can use
+    // for cleanup; we rely on `apiSlug` for downstream lookups instead.
   }, 30_000);
 
   afterAll(async () => {
-    if (publicApiId) {
-      await cleanupPublicApi(publicApiId);
-    }
+    // No-op. See beforeAll comment — team-api delete isn't exposed on V1 yet.
+    // Re-runs use unique `Date.now()`-suffixed slugs so they don't collide.
   }, 30_000);
 
   it("mock list — round-trips and emits valid JSON", () => {
