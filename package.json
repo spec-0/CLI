@@ -56,6 +56,7 @@
   "homepage": "https://github.com/spec-0/CLI#readme",
   "dependencies": {
     "@inquirer/prompts": "^7.2.0",
+    "@spec0/sdk-public-platform": "^1.1.1",
     "@stoplight/spectral-core": "^1.22.0",
     "@stoplight/spectral-parsers": "^1.0.0",
     "@stoplight/spectral-rulesets": "^1.22.1",

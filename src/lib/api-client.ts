@@ -3,6 +3,7 @@
  */
 
 import got, { type Options } from "got";
+import { ApiError, OpenAPI } from "@spec0/sdk-public-platform";
 import type { OrgConfig } from "./config.js";
 import type { ResolvedOrgContext } from "./auth-context.js";
 
@@ -155,17 +156,57 @@ export function createOrgApiClient(ctx: ResolvedOrgContext) {
 
 export { orgHeaders };
 
+/**
+ * Configure the `@spec0/sdk-public-platform` global `OpenAPI` singleton from a
+ * resolved org context. The SDK's request builder formats URLs as
+ * `OpenAPI.BASE + <service-path>`, where service paths look like
+ * `/api/v1/public/apis`. The CLI's stored `apiUrl` is the platform host root
+ * with no context path, so we append `/api-management` here to match the legacy
+ * raw HTTP call sites (which prefixed `/api-management/api/v1/public/apis`).
+ *
+ * `OpenAPI.TOKEN` is set to the org API key — the SDK adds the
+ * `Authorization: Bearer <token>` header automatically. `X-Org-Id` rides on
+ * `OpenAPI.HEADERS` so it's sent on every SDK call.
+ *
+ * Call this once per command invocation after `requireOrgContext()`. It is
+ * idempotent and safe to invoke multiple times in the same process.
+ */
+export function configureSdkAuth(ctx: ResolvedOrgContext): void {
+  OpenAPI.BASE = `${ctx.apiUrl}/api-management`;
+  OpenAPI.TOKEN = ctx.apiKey;
+  OpenAPI.HEADERS = { "X-Org-Id": ctx.orgId };
+}
+
+/**
+ * Extract the HTTP status code from either a `got`-style error
+ * (`err.response.statusCode`) or a SDK `ApiError` (`err.status`).
+ * Returns `undefined` if neither is present.
+ */
+export function errorStatusCode(err: unknown): number | undefined {
+  if (err instanceof ApiError) return err.status;
+  return (err as { response?: { statusCode?: number } })?.response?.statusCode;
+}
+
 export function is401(err: unknown): boolean {
-  return (err as { response?: { statusCode?: number } })?.response?.statusCode === 401;
+  return errorStatusCode(err) === 401;
 }
 
 export function is402(err: unknown): boolean {
-  return (err as { response?: { statusCode?: number } })?.response?.statusCode === 402;
+  return errorStatusCode(err) === 402;
 }
 
-/** Extract a human-readable error message from a backend error response. */
+/**
+ * Extract a human-readable error message from a backend error response.
+ * Handles both `got`-style errors (`err.response.body`) and SDK `ApiError`
+ * instances (`err.body`).
+ */
 export function extractErrorMessage(err: unknown): string | null {
-  const body = (err as { response?: { body?: unknown } })?.response?.body;
+  let body: unknown;
+  if (err instanceof ApiError) {
+    body = err.body;
+  } else {
+    body = (err as { response?: { body?: unknown } })?.response?.body;
+  }
   if (typeof body === "object" && body !== null) {
     const b = body as Record<string, unknown>;
     const msg = b["message"] ?? b["detail"] ?? b["error"];
