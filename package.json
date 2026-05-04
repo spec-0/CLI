@@ -16,6 +16,7 @@
     "lint": "eslint src --ext .ts",
     "pretest": "npm run build",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:integration": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest --testPathPatterns=test/integration --testPathIgnorePatterns=/node_modules/",
     "test:smoke": "npm run build && node scripts/smoke.mjs",
     "docs": "npm run build && node scripts/generate-docs.mjs write",
     "docs:check": "npm run build && node scripts/generate-docs.mjs check",

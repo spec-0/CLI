@@ -1,0 +1,62 @@
+# Staging integration tests for @spec0/cli.
+#
+# Manual-trigger only — runs `spec0 publish` end-to-end against the staging
+# platform. Each Phase 4 SDK migration PR adds another test under
+# `test/integration/` that piggybacks on the same harness (test/integration/
+# runCli.ts + staging-env.ts).
+#
+# ONE-TIME SETUP REQUIRED on `spec-0/CLI` repo before this workflow can pass:
+#   1. Create a `staging` Environment (Settings → Environments → New environment).
+#   2. Add Environment **Variables** (not secrets):
+#        - SPEC0_API_URL  (e.g. https://staging.spec0.io)
+#        - SPEC0_ORG_ID   (UUID of the staging test org)
+#   3. Add Environment **Secret**:
+#        - SPEC0_SAT_PUBLIC  (Service Access Token with the public-publish scope)
+#   These are the same values configured under `spec0-platform / staging` on
+#   the platform repo. Without them the workflow fires but `npm run
+#   test:integration` will skip every test (env-missing → describe.skip),
+#   exit 0, and produce a green run that did nothing — which is also fine.
+#
+# Nightly / post-merge auto-triggers are intentionally omitted; PR author
+# wants manual-only until the harness has stabilised across a few migrations.
+
+name: Staging Integration
+
+on:
+  workflow_dispatch:
+  # Future triggers (left commented for the next reviewer):
+  # schedule:
+  #   - cron: "0 6 * * *"   # nightly 06:00 UTC
+  # push:
+  #   branches: [main]
+
+concurrency:
+  group: cli-staging-integration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      # CLI reads SPEC0_TOKEN; the repo secret is named SPEC0_SAT_PUBLIC for
+      # consistency with the platform repo. Map it here.
+      SPEC0_API_URL: ${{ vars.SPEC0_API_URL }}
+      SPEC0_ORG_ID: ${{ vars.SPEC0_ORG_ID }}
+      SPEC0_TOKEN: ${{ secrets.SPEC0_SAT_PUBLIC }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Integration tests (live staging)
+        run: npm run test:integration
