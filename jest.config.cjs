@@ -18,6 +18,10 @@ module.exports = {
   testEnvironment: "node",
   roots: ["<rootDir>/test"],
   testMatch: ["**/*.test.ts"],
+  // Default `npm test` is offline-only. Integration tests live under
+  // `test/integration/` and hit live staging — they're opted in via
+  // `npm run test:integration`, which overrides this with --testPathPattern.
+  testPathIgnorePatterns: ["/node_modules/", "<rootDir>/test/integration/"],
   // Serialise across test files. config.test.ts and auth-context.test.ts both
   // talk to the same `conf`-backed JSON file under $HOME; with parallel Jest
   // workers on CI they race and fail intermittently. Suite is tiny (~1 s), so

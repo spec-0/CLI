@@ -11,40 +11,18 @@ import { Command } from "commander";
 import chalk from "chalk";
 import ora from "ora";
 import { existsSync, readFileSync } from "fs";
+import {
+  PublicApisService,
+  type PublicPublishRequestV1,
+  type Visibility,
+} from "@spec0/sdk-public-platform";
 import { runSpectral } from "../lib/lint.js";
 import { formatLintText, formatGitHubAnnotation } from "../lib/output.js";
-import { createOrgApiClient, is401, is402 } from "../lib/api-client.js";
+import { configureSdkAuth, errorStatusCode, is401, is402 } from "../lib/api-client.js";
 import { requireOrgContext } from "../lib/auth-context.js";
 import { ExitCode, exit, exitCodeForHttpStatus } from "../lib/exit-codes.js";
 import { resolveCliSpecPathFromFlags } from "../lib/cli-spec-path.js";
 import { resolvedPlatformApiUrl } from "../lib/platform-defaults.js";
-
-// Types for the public-publish API (mirrors public-registry-api-spec.yaml schemas).
-// Exactly one of `version` / `versionBump` must be set; the server enforces this
-// (returning 400 if both or neither are provided).
-interface PublicPublishRequest {
-  publicApiId?: string;
-  apiSlug?: string;
-  title?: string;
-  description?: string;
-  visibility?: string;
-  version?: string;
-  versionBump?: "MINOR" | "PATCH";
-  openapiSpec: string;
-  gitSha?: string;
-  releaseNotes?: string;
-}
-
-interface PublicPublishResponse {
-  publicApiId?: string;
-  apiSlug?: string;
-  orgSlug?: string;
-  version?: string;
-  visibility?: string;
-  created?: boolean;
-  versionCreated?: boolean;
-  publicUrl?: string;
-}
 
 const API_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -299,13 +277,17 @@ export function registerPublishCommand(program: Command) {
         // API call
         // -----------------------------------------------------------------------
         spinner.start("Publishing to public registry...");
-        const client = createOrgApiClient(ctx);
-        const body: PublicPublishRequest = {
+        // Wire the @spec0/sdk-public-platform global config from the resolved
+        // org context. The SDK targets `/api/v1/public/apis`; `configureSdkAuth`
+        // sets `OpenAPI.BASE = ctx.apiUrl + '/api-management'` so the final URL
+        // matches the legacy `/api-management/api/v1/public/apis` path.
+        configureSdkAuth(ctx);
+        const body: PublicPublishRequestV1 = {
           publicApiId,
           apiSlug,
           title,
           description,
-          visibility,
+          visibility: visibility as Visibility,
           version: hasVersion ? version : undefined,
           versionBump,
           openapiSpec,
@@ -317,10 +299,7 @@ export function registerPublishCommand(program: Command) {
           // Public-registry publish moved off the legacy /cli/v1/* surface to the versioned
           // /api/v1/public/* surface (which has scope checks, rate limiting, and a stable API
           // contract). Same request/response shape; only the path differs.
-          const reg = (await client.postJson(
-            "/api-management/api/v1/public/apis",
-            body,
-          )) as PublicPublishResponse;
+          const reg = await PublicApisService.publishPublicApi({ requestBody: body });
 
           spinner.stop();
 
@@ -367,14 +346,20 @@ export function registerPublishCommand(program: Command) {
             exit(ExitCode.AUTH_MISSING);
           }
           if (is402(err)) {
+            // SDK ApiError exposes the parsed problem body on `err.body`; legacy `got`
+            // errors used to expose it on `err.response.body`. Walk both.
+            const sdkBody = (err as { body?: { detail?: string } })?.body;
+            const legacyBody = (err as { response?: { body?: { detail?: string } } })?.response
+              ?.body;
             const msg =
-              (err as { response?: { body?: { detail?: string } } })?.response?.body?.detail ??
+              sdkBody?.detail ??
+              legacyBody?.detail ??
               "Plan limit exceeded. Upgrade your plan to publish more public APIs or use PUBLISHED visibility.";
             console.error(chalk.red(`Plan limit: ${msg}`));
             // 402 isn't in the stable table; PERMISSION_DENIED is closest semantic.
             exit(ExitCode.PERMISSION_DENIED);
           }
-          const statusCode = (err as { response?: { statusCode?: number } })?.response?.statusCode;
+          const statusCode = errorStatusCode(err);
           if (statusCode === 409) {
             const conflictTag = version ?? "(server-computed)";
             console.error(
@@ -385,11 +370,10 @@ export function registerPublishCommand(program: Command) {
             console.error(chalk.yellow("Use a new version tag (e.g. bump the patch version)."));
             exit(ExitCode.CONFLICT);
           }
+          const sdkBody = (err as { body?: { detail?: string } })?.body;
+          const legacyBody = (err as { response?: { body?: { detail?: string } } })?.response?.body;
           const msg =
-            (err as { response?: { body?: { detail?: string } }; message?: string })?.response?.body
-              ?.detail ??
-            (err as Error).message ??
-            String(err);
+            sdkBody?.detail ?? legacyBody?.detail ?? (err as Error).message ?? String(err);
           console.error(chalk.red(`Publish failed: ${msg}\n`));
           console.error(chalk.yellow(publishUsageExamples()));
           exit(exitCodeForHttpStatus(statusCode));
