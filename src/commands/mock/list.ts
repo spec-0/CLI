@@ -1,16 +1,19 @@
 /**
  * spec0 mock list — one row per mock server in the org.
  *
- * Already modernised in a prior PR; moved here as part of the mock.ts split.
+ * Migrated to `@spec0/sdk-public-platform` (`PublicMocksService.listPublicMocks`)
+ * which targets the versioned `/api/v1/public/mocks` surface. Same response
+ * shape as the legacy `/api-management/cli/v1/mocks` endpoint; only the path
+ * and transport differ.
  */
 
 import { Command } from "commander";
-import { createOrgApiClient, is401 } from "../../lib/api-client.js";
+import { PublicMocksService } from "@spec0/sdk-public-platform";
+import { configureSdkAuth, is401 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
 import { ExitCode } from "../../lib/exit-codes.js";
 import { emit, fail, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
 import { renderTable } from "../../lib/output/table.js";
-import type { MockItem } from "./create.js";
 
 export function registerMockListCommand(mock: Command) {
   mock
@@ -30,9 +33,9 @@ export function registerMockListCommand(mock: Command) {
         });
       }
 
-      const client = createOrgApiClient(authCtx);
+      configureSdkAuth(authCtx);
       try {
-        const rows = (await client.getJson("/api-management/cli/v1/mocks")) as MockItem[];
+        const rows = await PublicMocksService.listPublicMocks();
         const enriched = rows.map((m) => ({
           api: m.apiName ?? m.apiId ?? "—",
           name: m.name ?? "—",
