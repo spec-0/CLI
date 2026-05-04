@@ -4,13 +4,16 @@
  * Intentionally terse: prints the resolved mock URL and nothing else so it can
  * be captured straight into a shell var (`export MOCK=$(spec0 mock url foo)`).
  * For a richer view, use `spec0 mock show`.
+ *
+ * Migrated to `PublicMocksService.listPublicMocks` — the backend has no
+ * point-lookup endpoint so we still list-and-filter, just over the SDK now.
  */
 
 import { Command } from "commander";
-import { createOrgApiClient, is401 } from "../../lib/api-client.js";
+import { PublicMocksService } from "@spec0/sdk-public-platform";
+import { configureSdkAuth, is401 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
 import { ExitCode, exit } from "../../lib/exit-codes.js";
-import type { MockItem } from "./create.js";
 
 export function registerMockUrlCommand(mock: Command) {
   mock
@@ -25,9 +28,9 @@ export function registerMockUrlCommand(mock: Command) {
         exit(ExitCode.AUTH_MISSING, (e as Error).message);
       }
 
-      const client = createOrgApiClient(authCtx);
+      configureSdkAuth(authCtx);
       try {
-        const rows = (await client.getJson("/api-management/cli/v1/mocks")) as MockItem[];
+        const rows = await PublicMocksService.listPublicMocks();
         const needle = api.toLowerCase();
         const hit = rows.find(
           (r) =>

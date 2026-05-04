@@ -1,25 +1,21 @@
 /**
  * spec0 mock create — provision (or fetch) the default mock server for an API.
  *
- * The backend endpoint is idempotent: POST /api-management/cli/v1/mocks either
- * returns the existing mock or creates a fresh one. The API key is only ever
- * returned once (on initial creation), so CI callers should capture it on the
- * very first run — we surface it prominently in text mode and include it in
- * the JSON payload.
+ * Migrated to `@spec0/sdk-public-platform` (`PublicMocksService.createPublicMock`)
+ * which targets the versioned `/api/v1/public/mocks` surface. The endpoint
+ * is idempotent: POST either returns the existing mock or creates a fresh one.
+ * The API key is only ever returned once (on initial creation), so CI callers
+ * should capture it on the very first run — we surface it prominently in text
+ * mode and include it in the JSON payload.
  */
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { createOrgApiClient, is401 } from "../../lib/api-client.js";
+import { PublicMocksService, type CreateMockRequestV1 } from "@spec0/sdk-public-platform";
+import { configureSdkAuth, is401 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
 import { ExitCode } from "../../lib/exit-codes.js";
 import { emit, fail, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
-import type { components, paths } from "../../types.js";
-
-type CreateMockRequest =
-  paths["/api-management/cli/v1/mocks"]["post"]["requestBody"]["content"]["application/json"];
-type CreateMockResponse =
-  paths["/api-management/cli/v1/mocks"]["post"]["responses"][200]["content"]["application/json"];
 
 interface CreateMockResult {
   apiId?: string;
@@ -53,20 +49,20 @@ export function registerMockCreateCommand(mock: Command) {
         });
       }
 
-      const client = createOrgApiClient(authCtx);
-      const body: CreateMockRequest = {
+      configureSdkAuth(authCtx);
+      const requestBody: CreateMockRequestV1 = {
         apiName: opts.api,
         apiId: opts.apiId,
       };
 
       try {
-        const res = (await client.postJson(
-          "/api-management/cli/v1/mocks",
-          body,
-        )) as CreateMockResponse;
+        const res = await PublicMocksService.createPublicMock({ requestBody });
 
         const result: CreateMockResult = {
-          apiId: res.apiId,
+          // The SDK's CreateMockResponseV1 doesn't model `apiId` (it's not in the
+          // public OpenAPI contract); we surface whatever the caller passed so the
+          // JSON shape stays stable for CI consumers.
+          apiId: opts.apiId,
           apiName: res.apiName,
           mockUrl: `${authCtx.apiUrl}${res.mockBaseUrl ?? ""}`,
           apiKey: res.apiKey ?? null,
@@ -96,6 +92,3 @@ function renderCreateText(r: CreateMockResult): string {
   }
   return lines.join("\n");
 }
-
-// Re-export shared item type so other mock commands don't re-declare it.
-export type MockItem = components["schemas"]["MockItem"];

@@ -1,17 +1,19 @@
 /**
  * spec0 mock show <api> — structured view of a single mock server.
  *
- * Backend lacks a GET /mocks/{id} endpoint, so we fetch the full list and
- * filter client-side by API name or id. Cheap enough for any realistic org.
+ * Backend lacks a GET /mocks/{id} endpoint, so we fetch the full list via the
+ * SDK and filter client-side by API name or id. Cheap enough for any realistic
+ * org. Migrated to `PublicMocksService.listPublicMocks` — same wire path as
+ * `mock list`/`mock url`.
  */
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { createOrgApiClient, is401 } from "../../lib/api-client.js";
+import { PublicMocksService } from "@spec0/sdk-public-platform";
+import { configureSdkAuth, is401 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
 import { ExitCode } from "../../lib/exit-codes.js";
 import { emit, fail, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
-import type { MockItem } from "./create.js";
 
 interface MockShowResult {
   apiId?: string;
@@ -39,9 +41,9 @@ export function registerMockShowCommand(mock: Command) {
         });
       }
 
-      const client = createOrgApiClient(authCtx);
+      configureSdkAuth(authCtx);
       try {
-        const rows = (await client.getJson("/api-management/cli/v1/mocks")) as MockItem[];
+        const rows = await PublicMocksService.listPublicMocks();
         const needle = api.toLowerCase();
         const hit = rows.find(
           (r) =>
