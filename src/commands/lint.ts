@@ -1,0 +1,125 @@
+/**
+ * spec0 lint — Spectral bundled, org ruleset fetch, JSON/text/github output.
+ *
+ * Migrated to PublicSpectralService:
+ *   - GET ruleset → /api/v1/public/spectral/ruleset
+ *   - PUT ruleset → /api/v1/public/spectral/ruleset
+ */
+
+import { Command } from "commander";
+import chalk from "chalk";
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+import { PublicSpectralService } from "@spec0/sdk-public-platform";
+import { findSpecInDir } from "../lib/spec-finder.js";
+import { resolveCliSpecPathFromFlags } from "../lib/cli-spec-path.js";
+import { runSpectral } from "../lib/lint.js";
+import { formatLintText, formatGitHubAnnotation } from "../lib/output.js";
+import { configureSdkAuth } from "../lib/api-client.js";
+import { requireOrgContext } from "../lib/auth-context.js";
+import { ExitCode, exit } from "../lib/exit-codes.js";
+
+export function registerLintCommand(program: Command) {
+  program
+    .command("lint")
+    .description("Lint OpenAPI spec with Spectral")
+    .argument("[spec-file]", "Path to OpenAPI spec (or use --spec-file / global --spec-file)")
+    .option("--spec-file <path>", "Path to OpenAPI spec file")
+    .option("--ruleset <file>", "Use custom ruleset file")
+    .option("--org-ruleset", "Fetch org ruleset from server")
+    .option(
+      "--save-ruleset <file>",
+      "Upload <file> as the org's stored Spectral ruleset (skips the lint step)",
+    )
+    .option("--format <fmt>", "Output: text, json, github, sarif", "text")
+    .option("--min-score <n>", "Exit 1 if score below n (0-100)", "0")
+    .option("--strict", "Exit 1 on any warning")
+    .action(
+      async (
+        specArg: string | undefined,
+        opts: Record<string, string | boolean>,
+        command: Command,
+      ) => {
+        // --save-ruleset is an upload-only mode; short-circuit the lint path.
+        if (typeof opts.saveRuleset === "string" && opts.saveRuleset) {
+          await uploadRuleset(opts.saveRuleset);
+          return;
+        }
+
+        const cwd = process.cwd();
+        const specPath =
+          resolveCliSpecPathFromFlags(command, cwd, opts.specFile as string | undefined, specArg) ??
+          findSpecInDir(cwd);
+        if (!specPath || !existsSync(specPath)) {
+          console.error(chalk.red("Spec file not found."));
+          exit(ExitCode.USAGE);
+        }
+
+        let rulesetFile = opts.ruleset as string | undefined;
+        if (opts.orgRuleset) {
+          try {
+            const ctx = requireOrgContext();
+            configureSdkAuth(ctx);
+            const res = await PublicSpectralService.getSpectralRuleset();
+            const yaml = res.rulesetYaml?.trim() ?? "";
+            if (!yaml) {
+              console.warn(
+                chalk.yellow("No org ruleset stored on the server; using built-in OAS ruleset."),
+              );
+            } else {
+              rulesetFile = join(tmpdir(), `spec0-org-ruleset-${Date.now()}.yaml`);
+              writeFileSync(rulesetFile, yaml, "utf-8");
+            }
+          } catch (e) {
+            console.error(chalk.red((e as Error).message));
+            exit(ExitCode.AUTH_MISSING);
+          }
+        }
+
+        const result = await runSpectral(specPath, rulesetFile);
+
+        if (opts.format === "json") {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (opts.format === "github") {
+          for (const e of result.errors) {
+            console.log(formatGitHubAnnotation(specPath, e.line ?? 0, "error", e.message));
+          }
+          for (const w of result.warnings) {
+            console.log(formatGitHubAnnotation(specPath, w.line ?? 0, "warning", w.message));
+          }
+        } else {
+          console.log(`Linting ${specPath}... (oas ruleset)\n`);
+          console.log(formatLintText(result));
+        }
+
+        const minScore = parseInt(String(opts.minScore ?? "0"), 10);
+        if (result.score < minScore) exit(ExitCode.VALIDATION);
+        if (opts.strict === true && result.warnings.length > 0) exit(ExitCode.VALIDATION);
+        if (result.errors.length > 0) exit(ExitCode.VALIDATION);
+      },
+    );
+}
+
+async function uploadRuleset(filePath: string): Promise<void> {
+  if (!existsSync(filePath)) {
+    console.error(chalk.red(`Ruleset file not found: ${filePath}`));
+    exit(ExitCode.USAGE);
+  }
+  const rulesetYaml = readFileSync(filePath, "utf-8");
+  let ctx;
+  try {
+    ctx = requireOrgContext();
+  } catch (e) {
+    console.error(chalk.red((e as Error).message));
+    exit(ExitCode.AUTH_MISSING);
+  }
+  configureSdkAuth(ctx);
+  try {
+    await PublicSpectralService.putSpectralRuleset({ requestBody: { rulesetYaml } });
+    console.log(chalk.green(`✓ uploaded ${filePath} as the org's Spectral ruleset`));
+  } catch (err) {
+    console.error(chalk.red(`Failed to upload ruleset: ${(err as Error).message}`));
+    exit(ExitCode.GENERIC);
+  }
+}

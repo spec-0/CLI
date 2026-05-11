@@ -1,0 +1,94 @@
+{
+  "name": "@spec0/cli",
+  "version": "0.3.0",
+  "description": "Spec0 CLI — publish API specs, create mock servers, lint, and interact with the Spec0 platform",
+  "main": "dist/index.js",
+  "bin": {
+    "spec0": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "cli": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "pretest": "npm run build",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:integration": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest --testPathPatterns=test/integration --testPathIgnorePatterns=/node_modules/",
+    "test:smoke": "npm run build && node scripts/smoke.mjs",
+    "docs": "npm run build && node scripts/generate-docs.mjs write",
+    "docs:check": "npm run build && node scripts/generate-docs.mjs check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky",
+    "prepublishOnly": "npm run build"
+  },
+  "lint-staged": {
+    "*.{ts,js,mjs,cjs}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "spec0",
+    "openapi",
+    "api",
+    "cli",
+    "mock",
+    "lint"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spec-0/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/spec-0/cli/issues"
+  },
+  "homepage": "https://github.com/spec-0/cli#readme",
+  "dependencies": {
+    "@inquirer/prompts": "^7.2.0",
+    "@spec0/sdk-public-platform": "^1.2.0",
+    "@stoplight/spectral-core": "^1.22.0",
+    "@stoplight/spectral-parsers": "^1.0.0",
+    "@stoplight/spectral-rulesets": "^1.22.1",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "conf": "^13.0.0",
+    "diff": "^7.0.0",
+    "got": "^14.4.1",
+    "open": "^10.0.0",
+    "ora": "^8.1.0",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@eslint/js": "^9.39.4",
+    "@types/diff": "^7.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.0.0",
+    "globals": "^17.5.0",
+    "husky": "^9.1.7",
+    "jest": "^30.3.0",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.8.3",
+    "ts-jest": "^29.4.9",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.59.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENTS.md"
+  ]
+}
