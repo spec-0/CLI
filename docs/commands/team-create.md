@@ -1,22 +1,27 @@
-# `spec0 api list`
+# `spec0 team create`
 
 > Auto-generated from the `spec0 commands --output=json` manifest. Do not edit by hand.
 > Run `npm run docs` to regenerate after changing command flags.
 
-List APIs in your organisation (catalogue view).
+Create a new team in the org. Requires admin:team scope.
 
 ## Usage
 
 ```bash
-spec0 api list [options]
+spec0 team create <name> [options]
 ```
+
+## Arguments
+
+| name | required | description |
+| --- | --- | --- |
+| `name` | yes |  |
 
 ## Flags
 
 | flag | description | default |
 | --- | --- | --- |
-| `--team <team>` | Filter by team name (case-insensitive) |  |
-| `--search <query>` | Filter by name substring (case-insensitive) |  |
+| `--description <text>` | Optional team description |  |
 | `--org <uuid>` | Org id override |  |
 | `--output <format>` | Output format: text, json, or yaml (default: text) |  |
 

@@ -109,7 +109,10 @@ describe("--version flag does not collide between program and subcommands", () =
     expect(r.stdout).toMatch(/version=1\.0\.0/);
   });
 
-  it("`spec0 publish` without --version or --bump fails with a clear error", () => {
+  it("`spec0 publish` without --version or --semver still runs (server default applies)", () => {
+    // ADR-0026: neither flag required. Server falls through to info.version /
+    // 0.1.0 default. The CLI's dry-run announces "version=server-default" so
+    // we can confirm the flag-parsing path doesn't reject the call.
     const r = run([
       "publish",
       specPath,
@@ -117,29 +120,13 @@ describe("--version flag does not collide between program and subcommands", () =
       "regression-fixture",
       "--skip-lint",
       "--dry-run",
-    ]);
-    expect(r.status).not.toBe(0);
-    // Either is required since --bump landed alongside --version.
-    expect(r.stderr).toMatch(/--version.*--bump|--bump.*--version/);
-  });
-
-  it("`spec0 publish --bump minor` runs publish without --version", () => {
-    const r = run([
-      "publish",
-      specPath,
-      "--name",
-      "regression-fixture",
-      "--skip-lint",
-      "--dry-run",
-      "--bump",
-      "minor",
     ]);
     expect(r.status).toBe(0);
     expect(r.stdout).toMatch(/Dry run/);
-    expect(r.stdout).toMatch(/bump=minor/);
+    expect(r.stdout).toMatch(/version=server-default/);
   });
 
-  it("`spec0 publish --bump patch` accepts patch as an alternative to minor", () => {
+  it("`spec0 publish --semver` runs publish with auto-bump-patch", () => {
     const r = run([
       "publish",
       specPath,
@@ -147,14 +134,16 @@ describe("--version flag does not collide between program and subcommands", () =
       "regression-fixture",
       "--skip-lint",
       "--dry-run",
-      "--bump",
-      "patch",
+      "--semver",
     ]);
     expect(r.status).toBe(0);
-    expect(r.stdout).toMatch(/bump=patch/);
+    expect(r.stdout).toMatch(/Dry run/);
+    expect(r.stdout).toMatch(/semver=auto-bump-patch/);
   });
 
-  it("`spec0 publish` with both --version and --bump fails with mutually-exclusive error", () => {
+  it("`spec0 publish` accepts both --version and --semver (version wins)", () => {
+    // ADR-0026: removed the mutex gate. Backend resolution prefers explicit
+    // --version when both are present.
     const r = run([
       "publish",
       specPath,
@@ -164,14 +153,15 @@ describe("--version flag does not collide between program and subcommands", () =
       "--dry-run",
       "--version",
       "1.0.0",
-      "--bump",
-      "minor",
+      "--semver",
     ]);
-    expect(r.status).not.toBe(0);
-    expect(r.stderr).toMatch(/mutually exclusive/);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/version=1\.0\.0/);
   });
 
-  it("`spec0 publish --bump major` is rejected with a pointer to the policy", () => {
+  it("`spec0 publish --version` accepts an arbitrary (non-semver) string", () => {
+    // ADR-0026: registry stores arbitrary version strings (sha-prefixed,
+    // calendar tags, UUIDs). The CLI no longer validates the format locally.
     const r = run([
       "publish",
       specPath,
@@ -179,11 +169,10 @@ describe("--version flag does not collide between program and subcommands", () =
       "regression-fixture",
       "--skip-lint",
       "--dry-run",
-      "--bump",
-      "major",
+      "--version",
+      "staging-abc1234",
     ]);
-    expect(r.status).not.toBe(0);
-    // Per Spec0 versioning policy, breaking changes create a new API rather than bumping major.
-    expect(r.stderr).toMatch(/MAJOR.*not supported|breaking changes create a new API/i);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/version=staging-abc1234/);
   });
 });
