@@ -9,7 +9,7 @@
  *
  * What this test asserts:
  *   1. The CLI builds and resolves staging credentials.
- *   2. `publish --bump minor --visibility draft --format json` round-trips
+ *   2. `publish --semver --visibility draft --format json` round-trips
  *      successfully against the live `/api/v1/public/apis` endpoint.
  *   3. The JSON envelope shape matches what downstream tooling (CI annotations,
  *      docs scripts) consumes: `created`, `versionCreated`, `version`,
@@ -112,8 +112,7 @@ describeFn("staging integration: spec0 publish", () => {
         specPath,
         "--name",
         slug,
-        "--bump",
-        "minor",
+        "--semver",
         "--visibility",
         "draft",
         "--skip-lint",

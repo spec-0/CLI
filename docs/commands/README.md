@@ -2,7 +2,7 @@
 
 > Auto-generated from the `spec0 commands --output=json` manifest. Do not edit by hand.
 
-`@spec0/cli` exposes 29 commands. Each page describes the flags and arguments for a single command.
+`@spec0/cli` exposes 32 commands. Each page describes the flags and arguments for a single command.
 
 | Command | Description |
 | --- | --- |
@@ -20,6 +20,9 @@
 | [`spec0 mock list`](mock-list.md) | List all mock servers in the org. |
 | [`spec0 mock show`](mock-show.md) | Show details for the mock server tied to <api> (name or UUID). |
 | [`spec0 mock url`](mock-url.md) | Print mock base URL for <api> (name or UUID). One line, pipe-friendly. |
+| [`spec0 team create`](team-create.md) | Create a new team in the org. Requires admin:team scope. |
+| [`spec0 team delete`](team-delete.md) | Delete a team. Refuses non-empty teams (delete child APIs/mocks first). |
+| [`spec0 team list`](team-list.md) | List all teams in the org. |
 | [`spec0 lint`](lint.md) | Lint OpenAPI spec with Spectral |
 | [`spec0 pull`](pull.md) | Download spec from registry (e.g. acme/order-service or acme/order-service@v1.2.0) |
 | [`spec0 search`](search.md) | Semantic search for APIs in your org |

@@ -1,22 +1,20 @@
-# `spec0 api list`
+# `spec0 team list`
 
 > Auto-generated from the `spec0 commands --output=json` manifest. Do not edit by hand.
 > Run `npm run docs` to regenerate after changing command flags.
 
-List APIs in your organisation (catalogue view).
+List all teams in the org.
 
 ## Usage
 
 ```bash
-spec0 api list [options]
+spec0 team list [options]
 ```
 
 ## Flags
 
 | flag | description | default |
 | --- | --- | --- |
-| `--team <team>` | Filter by team name (case-insensitive) |  |
-| `--search <query>` | Filter by name substring (case-insensitive) |  |
 | `--org <uuid>` | Org id override |  |
 | `--output <format>` | Output format: text, json, or yaml (default: text) |  |
 

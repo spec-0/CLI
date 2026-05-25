@@ -1,22 +1,27 @@
-# `spec0 api list`
+# `spec0 team delete`
 
 > Auto-generated from the `spec0 commands --output=json` manifest. Do not edit by hand.
 > Run `npm run docs` to regenerate after changing command flags.
 
-List APIs in your organisation (catalogue view).
+Delete a team. Refuses non-empty teams (delete child APIs/mocks first).
 
 ## Usage
 
 ```bash
-spec0 api list [options]
+spec0 team delete <teamId> [options]
 ```
+
+## Arguments
+
+| name | required | description |
+| --- | --- | --- |
+| `teamId` | yes |  |
 
 ## Flags
 
 | flag | description | default |
 | --- | --- | --- |
-| `--team <team>` | Filter by team name (case-insensitive) |  |
-| `--search <query>` | Filter by name substring (case-insensitive) |  |
+| `--yes` | Skip the confirmation prompt (required for non-interactive use) |  |
 | `--org <uuid>` | Org id override |  |
 | `--output <format>` | Output format: text, json, or yaml (default: text) |  |
 

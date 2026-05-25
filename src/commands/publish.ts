@@ -38,12 +38,13 @@ function publishUsageExamples(): string {
   return [
     "Examples:",
     "  spec0 publish --spec-file ./openapi.yaml --name payments-api --version 1.0.0",
-    "  spec0 publish ./openapi.yaml --name payments-api --bump minor --visibility published",
-    "  spec0 publish --spec-file ./openapi.yaml --public-api-id <uuid> --bump patch",
-    "  spec0 publish ./openapi.yaml --version 1.0.0  # slug inferred from spec info.title",
+    "  spec0 publish ./openapi.yaml --name payments-api --semver --visibility published",
+    "  spec0 publish --spec-file ./openapi.yaml --public-api-id <uuid> --semver",
+    "  spec0 publish ./openapi.yaml --version staging-abc1234  # arbitrary tag accepted",
     "",
-    "Use --version to pin an explicit semver tag, or --bump to let the registry compute",
-    "the next version atomically (preferred for CI: avoids races on concurrent publishes).",
+    "Use --version to pin an explicit tag (any string), or --semver to let the registry",
+    "auto-bump the PATCH component of the previous stored semver. Both flags can be passed",
+    "together — --version wins if set.",
   ].join("\n");
 }
 
@@ -78,10 +79,13 @@ export function registerPublishCommand(program: Command) {
     )
     .option("--title <title>", "Human-readable display title. Defaults to --name if omitted.")
     .option("--description <text>", "Short description of the API")
-    .option("--version <version>", "Explicit semver tag for this version (e.g. 1.0.0)")
     .option(
-      "--bump <type>",
-      "Server-computed bump: minor | patch. Mutually exclusive with --version.",
+      "--version <version>",
+      "Explicit version tag for this publish. Accepts any string (semver, sha-prefixed, calendar tags, UUIDs).",
+    )
+    .option(
+      "--semver",
+      "Auto-bump PATCH from the previous stored semver. Falls through to spec info.version / 0.1.0 on first publish.",
     )
     .option(
       "--visibility <state>",
@@ -124,7 +128,7 @@ export function registerPublishCommand(program: Command) {
         const titleOpt = opts.title as string | undefined;
         const description = opts.description as string | undefined;
         const version = opts.version as string | undefined;
-        const bumpRaw = opts.bump as string | undefined;
+        const semver = !!(opts.semver as boolean);
         const visibilityRaw = (opts.visibility as string) ?? "published";
         const releaseNotes = opts["releaseNotes"] as string | undefined;
         const gitSha = (opts["gitSha"] as string | undefined) ?? "";
@@ -132,42 +136,10 @@ export function registerPublishCommand(program: Command) {
         const skipLint = !!(opts.skipLint as boolean);
         const format = (opts.format as string) ?? "text";
 
-        // -----------------------------------------------------------------------
-        // Validate version / bump (exactly one required, mutually exclusive)
-        // -----------------------------------------------------------------------
+        // Either flag is fine; both is fine (server resolves: --version wins);
+        // neither is fine (server falls through to info.version or 0.1.0 default).
+        // See ADR-0026.
         const hasVersion = typeof version === "string" && version.trim().length > 0;
-        const hasBump = typeof bumpRaw === "string" && bumpRaw.trim().length > 0;
-        if (hasVersion && hasBump) {
-          console.error(
-            chalk.red("--version and --bump are mutually exclusive — use exactly one."),
-          );
-          exit(ExitCode.USAGE);
-        }
-        if (!hasVersion && !hasBump) {
-          console.error(
-            chalk.red(
-              "Either --version <semver> or --bump <minor|patch> is required.\n" +
-                "Use --version to pin an explicit tag, or --bump to let the registry compute the next.",
-            ),
-          );
-          exit(ExitCode.USAGE);
-        }
-        let versionBump: "MINOR" | "PATCH" | undefined;
-        if (hasBump) {
-          const normalized = (bumpRaw as string).trim().toUpperCase();
-          if (normalized !== "MINOR" && normalized !== "PATCH") {
-            console.error(
-              chalk.red(
-                `Invalid --bump '${bumpRaw}'. Must be: minor | patch.\n` +
-                  "MAJOR is intentionally not supported — per Spec0's versioning policy,\n" +
-                  "breaking changes create a new API rather than bumping the major version.\n" +
-                  "See https://spec0.io/docs/apis/versioning",
-              ),
-            );
-            exit(ExitCode.USAGE);
-          }
-          versionBump = normalized as "MINOR" | "PATCH";
-        }
 
         // Validate visibility
         const validVisibilities = ["draft", "published", "unlisted"];
@@ -264,7 +236,9 @@ export function registerPublishCommand(program: Command) {
         if (opts.dryRun) {
           const versionDesc = hasVersion
             ? `version=${version}`
-            : `bump=${versionBump?.toLowerCase()}`;
+            : semver
+              ? "semver=auto-bump-patch"
+              : "version=server-default";
           console.log(
             chalk.green(
               `Dry run — would publish apiSlug=${apiSlug ?? "-"} ${versionDesc} visibility=${visibility}`,
@@ -282,18 +256,22 @@ export function registerPublishCommand(program: Command) {
         // sets `OpenAPI.BASE = ctx.apiUrl + '/api-management'` so the final URL
         // matches the legacy `/api-management/api/v1/public/apis` path.
         configureSdkAuth(ctx);
-        const body: PublicPublishRequestV1 = {
+        // `semver: boolean` is the new ADR-0026 shape. The SDK type still has the
+        // legacy `versionBump` field; cast through `unknown` until the SDK is
+        // regenerated from the updated `public-api-v1-spec.yaml`. The backend
+        // already reads `semver` and ignores `versionBump` post-ADR-0026.
+        const body = {
           publicApiId,
           apiSlug,
           title,
           description,
           visibility: visibility as Visibility,
           version: hasVersion ? version : undefined,
-          versionBump,
+          semver,
           openapiSpec,
           gitSha: gitSha || undefined,
           releaseNotes: releaseNotes || undefined,
-        };
+        } as unknown as PublicPublishRequestV1;
 
         try {
           // Public-registry publish moved off the legacy /cli/v1/* surface to the versioned

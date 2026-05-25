@@ -26,8 +26,8 @@ spec0 publish [spec-file] [options]
 | `--name <slug>` | URL-safe API slug (e.g. payments-api). Inferred from spec info.title if omitted. |  |
 | `--title <title>` | Human-readable display title. Defaults to --name if omitted. |  |
 | `--description <text>` | Short description of the API |  |
-| `--version <version>` | Explicit semver tag for this version (e.g. 1.0.0) |  |
-| `--bump <type>` | Server-computed bump: minor | patch. Mutually exclusive with --version. |  |
+| `--version <version>` | Explicit version tag for this publish. Accepts any string (semver, sha-prefixed, calendar tags, UUIDs). |  |
+| `--semver` | Auto-bump PATCH from the previous stored semver. Falls through to spec info.version / 0.1.0 on first publish. |  |
 | `--visibility <state>` | Visibility: draft | published | unlisted (default: published) | `published` |
 | `--release-notes <text>` | Release notes for this version |  |
 | `--git-sha <sha>` | Git commit SHA for provenance |  |
