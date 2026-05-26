@@ -34,7 +34,7 @@ import { requireOrgContext } from "../lib/auth-context.js";
 import { ExitCode, exit, exitCodeForHttpStatus } from "../lib/exit-codes.js";
 import { resolveCliSpecPathFromFlags } from "../lib/cli-spec-path.js";
 import { resolvedPlatformAppUrl } from "../lib/platform-defaults.js";
-import { detectCI, getGitShaForFile, getGitBranch } from "../lib/ci-detect.js";
+import { resolveGitProvenance } from "../lib/git-provenance.js";
 
 const TEAM_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -131,28 +131,21 @@ async function runPush(
     }
   }
 
-  // ── Git SHA resolution ─────────────────────────────────────────────────────
-  // Priority: --git-sha flag > CI env > local git log
-  let gitSha = (opts["gitSha"] as string | undefined) ?? "";
-  let githubRepo = (opts["githubRepo"] as string | undefined) ?? "";
-  let githubBranch = (opts["githubBranch"] as string | undefined) ?? "";
-
-  if (!gitSha) {
-    const ci = detectCI();
-    if (ci?.gitSha) {
-      gitSha = ci.gitSha;
-      githubRepo = githubRepo || (ci.githubRepo ?? "");
-      githubBranch = githubBranch || ci.branch;
-      vLog(`git sha from CI: ${gitSha.slice(0, 8)}…`);
-    } else {
-      // Local git: SHA of last commit that touched this spec file
-      const localSha = getGitShaForFile(specPath);
-      if (localSha) {
-        gitSha = localSha;
-        githubBranch = githubBranch || (getGitBranch() ?? "");
-        vLog(`git sha from local git: ${gitSha.slice(0, 8)}…`);
-      }
-    }
+  // ── Git provenance resolution ──────────────────────────────────────────────
+  // See `lib/git-provenance.ts` — each field resolves independently with
+  // priority: explicit flag > CI env > local git. Independent resolution lets
+  // `--git-sha` be passed alongside auto-derived `githubRepo` + `githubBranch`
+  // (common in GitHub Actions where the workflow has the authoritative SHA).
+  const { gitSha, githubRepo, githubBranch } = resolveGitProvenance(
+    {
+      gitSha: opts["gitSha"] as string | undefined,
+      githubRepo: opts["githubRepo"] as string | undefined,
+      githubBranch: opts["githubBranch"] as string | undefined,
+    },
+    specPath,
+  );
+  if (gitSha) {
+    vLog(`git sha: ${gitSha.slice(0, 8)}…`);
   }
 
   // ── Lint gate ─────────────────────────────────────────────────────────────
