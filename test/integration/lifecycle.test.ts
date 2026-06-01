@@ -1,16 +1,21 @@
 /**
- * Staging integration: full team-scoped CLI lifecycle journey.
+ * Staging integration: team-scoped CLI lifecycle journey (pre-seeded team).
  *
- * Provisions a team → pushes an API into it → creates a mock for it →
- * exercises the CLI's read/write surface against those resources → tears
- * everything down.
+ * Pushes a per-run-unique API into a pre-seeded team → creates a mock →
+ * exercises the CLI's read/write surface → deletes the API + mock.
  *
+ * The team is NOT created or deleted: `createTeam` reassigns the acting user
+ * into the new team (single-team-per-user model), and team-scoped writes need a
+ * real user principal (a SAT — a legacy org key 500s). So the team is seeded
+ * once (name from `SPEC0_SMOKE_TEAM`, default `cli-smoke`) and reused.
+ *
+ * Requires a SAT in `SPEC0_TOKEN` with write:apis / write:specs / write:mocks.
  * Skipped automatically when staging env vars are missing (see staging-env.ts).
  * The default `npm test` excludes `test/integration/`; runs only via
  * `npm run test:integration` or the `staging-integration.yml` workflow.
  *
  * Coverage in order of execution:
- *   - team create        (via SDK directly; no CLI command exists yet)
+ *   - team verify        (listTeams; the team must already exist — never created)
  *   - spec0 push --team  (publishes a team-scoped API)
  *   - spec0 status       (org overview reflects the new resources)
  *   - spec0 api list     (catalogue lists the new API)
@@ -24,14 +29,11 @@
  *   - spec0 mock delete  (CLI-driven teardown; mock disappears from list)
  *   - spec0 api delete   (CLI-driven teardown; API disappears from list)
  *
- * Cleanup: steps 11–12 delete the mock + API via the CLI. afterAll deletes the
- * (now-empty) team and acts as a best-effort SDK safety net for the mock/API if
- * an earlier step failed before its CLI delete ran. Each cleanup step swallows
- * errors so a failure mid-test doesn't mask the original failure.
- *
- * Per-run unique slugs (`Date.now()`) so concurrent or re-run executions don't
- * collide. Each cleanup step swallows errors so a failure mid-test doesn't
- * mask the original failure.
+ * Cleanup: steps 11–12 delete the mock + API via the CLI; afterAll is a
+ * best-effort SDK safety net for them if a step failed first. The pre-seeded
+ * team is left intact. Per-run unique API/mock slugs (`Date.now()`) so re-runs
+ * don't collide; each cleanup step swallows errors so a mid-test failure
+ * doesn't mask the original.
  */
 import {
   OpenAPI,
@@ -136,13 +138,16 @@ function configureSdkForStaging(): void {
 
 const describeFn = STAGING_ENV_AVAILABLE ? describe : describe.skip;
 
-describeFn("staging integration: full team-scoped CLI lifecycle", () => {
-  // Per-run unique. Date.now() ms is enough — workflow is manual-trigger.
+describeFn("staging integration: team-scoped CLI lifecycle (pre-seeded team)", () => {
+  // API + mock are per-run unique (Date.now()). The team is pre-seeded and
+  // shared — we never create or delete it: createTeam reassigns the acting
+  // user into the new team (single-team-per-user model), which is wrong for a
+  // recurring service-credential run, and team-scoped writes need a real user
+  // principal (a SAT, not a legacy org key).
   const stamp = Date.now();
-  const teamSlug = `cli-lc-team-${stamp}`;
+  const teamSlug = process.env.SPEC0_SMOKE_TEAM ?? "cli-smoke";
   const apiSlug = `cli-lc-api-${stamp}`;
 
-  let teamId: string | undefined;
   let apiId: string | undefined;
   let mockServerId: string | undefined;
 
@@ -153,16 +158,19 @@ describeFn("staging integration: full team-scoped CLI lifecycle", () => {
   beforeAll(async () => {
     configureSdkForStaging();
 
-    // 1. Create a fresh team via SDK (no CLI command for team create yet).
-    const team = (await PublicTeamsService.createTeam({
-      requestBody: { name: teamSlug },
-    })) as { id?: string };
-    if (!team.id) {
-      throw new Error(`createTeam returned no id (response: ${JSON.stringify(team)})`);
+    // The smoke team must already exist in the test org. We do NOT create it
+    // (see the side-effect note above) — fail with a clear setup message if
+    // it's absent.
+    const teams = await PublicTeamsService.listTeams();
+    const found = teams.some((t) => (t.name ?? "").toLowerCase() === teamSlug.toLowerCase());
+    if (!found) {
+      throw new Error(
+        `Smoke team '${teamSlug}' not found in the test org. Seed it once, or set ` +
+          `SPEC0_SMOKE_TEAM to an existing team name.`,
+      );
     }
-    teamId = team.id;
 
-    // 2. Stage the v1 spec on disk for `spec0 push`.
+    // Stage the v1 spec on disk for `spec0 push`.
     const { writeFileSync, mkdtempSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
@@ -173,7 +181,9 @@ describeFn("staging integration: full team-scoped CLI lifecycle", () => {
 
   afterAll(async () => {
     configureSdkForStaging();
-    // Reverse-order cleanup: mock → api → team. Best-effort; swallow errors.
+    // Reverse-order cleanup: mock → api. The team is pre-seeded — never deleted.
+    // Steps 11/12 normally delete these via the CLI and clear the ids; this is
+    // a best-effort SDK safety net if a step failed before its CLI delete ran.
     if (mockServerId) {
       try {
         await PublicMocksService.deletePublicMock({ mockServerId });
@@ -186,13 +196,6 @@ describeFn("staging integration: full team-scoped CLI lifecycle", () => {
         await PublicApisService.deleteTeamApi({ apiId });
       } catch (err) {
         console.warn(`[cleanup] deleteTeamApi failed: ${(err as Error).message}`);
-      }
-    }
-    if (teamId) {
-      try {
-        await PublicTeamsService.deleteTeam({ teamId });
-      } catch (err) {
-        console.warn(`[cleanup] deleteTeam failed: ${(err as Error).message}`);
       }
     }
   }, 30_000);

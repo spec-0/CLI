@@ -7,9 +7,15 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { configureSdkAuth, createOrgApiClient, is401 } from "../../lib/api-client.js";
+import {
+  configureSdkAuth,
+  createOrgApiClient,
+  is401,
+  errorStatusCode,
+  extractErrorMessage,
+} from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
-import { ExitCode } from "../../lib/exit-codes.js";
+import { ExitCode, exitCodeForHttpStatus } from "../../lib/exit-codes.js";
 import { emit, fail, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
 import { resolveRef, resolveApiId } from "../../lib/ref-resolver.js";
 import { getDefaultOrgId, getOrgConfig } from "../../lib/config.js";
@@ -93,7 +99,22 @@ export function registerApiShowCommand(api: Command) {
             hint: "Run 'spec0 api list' to see what exists in this org.",
           });
         }
-        fail(outCtx, ExitCode.GENERIC, `api show failed: ${(err as Error).message}`);
+        // Map the backend HTTP status to a stable exit code (404 → NOT_FOUND,
+        // 403 → PERMISSION_DENIED, 5xx → SERVER_ERROR, …) instead of a blanket
+        // GENERIC. The summary call rides the legacy `got` client, whose errors
+        // expose the status via errorStatusCode().
+        const status = errorStatusCode(err);
+        const msg = extractErrorMessage(err) ?? (err as Error).message;
+        if (status === 404) {
+          fail(outCtx, ExitCode.NOT_FOUND, `No API found for ref '${ref}'.`, {
+            hint: "Run 'spec0 api list' to see what exists in this org.",
+          });
+        }
+        fail(
+          outCtx,
+          status ? exitCodeForHttpStatus(status) : ExitCode.GENERIC,
+          `api show failed: ${msg}`,
+        );
       }
     });
 }
