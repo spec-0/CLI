@@ -19,11 +19,15 @@
  *   - spec0 mock show    (finds it by slug)
  *   - spec0 mock url     (single-line URL)
  *   - spec0 push v2      (publishes a second version)
- *   - spec0 sync-status  (matches HEAD → needsPublish=false)
  *   - spec0 api changelog v1 → v2  (structured diff between versions)
+ *   - spec0 api show     (details for the API)
+ *   - spec0 mock delete  (CLI-driven teardown; mock disappears from list)
+ *   - spec0 api delete   (CLI-driven teardown; API disappears from list)
  *
- * Cleanup (afterAll, best-effort):
- *   - delete mock → delete API → delete team
+ * Cleanup: steps 11–12 delete the mock + API via the CLI. afterAll deletes the
+ * (now-empty) team and acts as a best-effort SDK safety net for the mock/API if
+ * an earlier step failed before its CLI delete ran. Each cleanup step swallows
+ * errors so a failure mid-test doesn't mask the original failure.
  *
  * Per-run unique slugs (`Date.now()`) so concurrent or re-run executions don't
  * collide. Each cleanup step swallows errors so a failure mid-test doesn't
@@ -363,5 +367,47 @@ describeFn("staging integration: full team-scoped CLI lifecycle", () => {
     expect(out.fromTag).toBe("0.1.0");
     expect(out.toTag).toBe("0.2.0");
     expect(Array.isArray(out.changes)).toBe(true);
+  }, 30_000);
+
+  it("step 10 — spec0 api show returns details for the API", () => {
+    const r = runCli(["api", "show", apiSlug, "--output", "json"], { env: stagingEnvAsRecord() });
+    if (r.status !== 0) {
+      console.error(`[api show] stdout:\n${r.stdout}\n[api show] stderr:\n${r.stderr}`);
+    }
+    expect(r.status).toBe(0);
+
+    const out = JSON.parse(r.stdout) as { apiId?: string; apiName?: string };
+    expect(out.apiId).toBe(apiId);
+  }, 30_000);
+
+  it("step 11 — spec0 mock delete removes the mock (CLI-driven teardown)", () => {
+    const r = runCli(["mock", "delete", apiSlug, "--yes"], { env: stagingEnvAsRecord() });
+    if (r.status !== 0) {
+      console.error(`[mock delete] stdout:\n${r.stdout}\n[mock delete] stderr:\n${r.stderr}`);
+    }
+    expect(r.status).toBe(0);
+    // CLI handled teardown — clear so afterAll's SDK safety-net doesn't double-delete.
+    mockServerId = undefined;
+
+    const list = runCli(["mock", "list", "--output", "json"], { env: stagingEnvAsRecord() });
+    expect(list.status).toBe(0);
+    const parsed = JSON.parse(list.stdout) as MockListJsonRow[] | { data?: MockListJsonRow[] };
+    const rows = Array.isArray(parsed) ? parsed : (parsed.data ?? []);
+    expect(rows.find((row) => row.api === apiSlug)).toBeUndefined();
+  }, 30_000);
+
+  it("step 12 — spec0 api delete removes the API (CLI-driven teardown)", () => {
+    const r = runCli(["api", "delete", apiSlug, "--yes"], { env: stagingEnvAsRecord() });
+    if (r.status !== 0) {
+      console.error(`[api delete] stdout:\n${r.stdout}\n[api delete] stderr:\n${r.stderr}`);
+    }
+    expect(r.status).toBe(0);
+    apiId = undefined;
+
+    const list = runCli(["api", "list", "--output", "json"], { env: stagingEnvAsRecord() });
+    expect(list.status).toBe(0);
+    const parsed = JSON.parse(list.stdout) as ApiListJsonRow[] | { data?: ApiListJsonRow[] };
+    const rows = Array.isArray(parsed) ? parsed : (parsed.data ?? []);
+    expect(rows.find((row) => row.apiName === apiSlug)).toBeUndefined();
   }, 30_000);
 });

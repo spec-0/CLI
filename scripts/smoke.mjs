@@ -227,7 +227,7 @@ test("mock --help shows only implemented subcommands", () => {
   assert(out.includes("list"), "mock list missing");
   assert(out.includes("show"), "mock show missing");
   assert(out.includes("url"), "mock url missing");
-  assert(!out.includes("delete"), "'mock delete' stub should be removed");
+  assert(out.includes("delete"), "mock delete missing");
   assert(!out.includes("regenerate-key"), "'mock regenerate-key' stub should be removed");
   assert(!out.includes("logs"), "'mock logs' stub should be removed");
 });
@@ -368,11 +368,12 @@ test("api --help exits 0", () => {
   assert(r.status === 0, `exit ${r.status}`);
 });
 
-test("api --help shows list and show subcommands", () => {
+test("api --help shows list, show, and delete subcommands", () => {
   const r = run(["api", "--help"]);
   const out = r.stdout + r.stderr;
   assert(out.includes("list"), "api list missing from --help");
   assert(out.includes("show"), "api show missing from --help");
+  assert(out.includes("delete"), "api delete missing from --help");
 });
 
 test("api list --help mentions --output", () => {
