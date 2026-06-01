@@ -17,7 +17,12 @@ import {
 } from "../../lib/api-client.js";
 import { requireOrgContext } from "../../lib/auth-context.js";
 import { ExitCode, exitCodeForHttpStatus } from "../../lib/exit-codes.js";
-import { fail, progress, resolveOutputContext, type OutputOptions } from "../../lib/output/index.js";
+import {
+  fail,
+  progress,
+  resolveOutputContext,
+  type OutputOptions,
+} from "../../lib/output/index.js";
 import { resolveRef, resolveApiId } from "../../lib/ref-resolver.js";
 
 export function registerApiDeleteCommand(api: Command) {
