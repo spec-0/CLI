@@ -25,16 +25,15 @@
  *   - spec0 mock url     (single-line URL)
  *   - spec0 push v2      (publishes a second version)
  *   - spec0 api changelog v1 → v2  (structured diff between versions)
+ *   - spec0 api show     (details — lean V1 fallback for the team SAT)
  *   - spec0 mock delete  (CLI-driven teardown; mock disappears from list)
  *   - spec0 api delete   (CLI-driven teardown; API disappears from list)
  *
- * `spec0 api show` is intentionally NOT exercised here: it reads the internal
- * `/apis/{id}/summary` endpoint, which a public/team SAT isn't entitled to
- * (403), and which the CLI currently calls at the wrong base path. `api list`
- * already covers the SAT-accessible metadata; api show's not-found path is
- * covered by read-only.test.ts.
+ * `api show` prefers the rich internal `/apis/{id}/summary`, which a team SAT
+ * isn't entitled to (403); it then falls back to the leaner V1 team-API row,
+ * so it still returns the core metadata for the SAT used here.
  *
- * Cleanup: steps 10–11 delete the mock + API via the CLI; afterAll is a
+ * Cleanup: steps 11–12 delete the mock + API via the CLI; afterAll is a
  * best-effort SDK safety net for them if a step failed first. The pre-seeded
  * team is left intact. Per-run unique API/mock slugs (`Date.now()`) so re-runs
  * don't collide; each cleanup step swallows errors so a mid-test failure
@@ -377,7 +376,22 @@ describeFn("staging integration: team-scoped CLI lifecycle (pre-seeded team)", (
     expect(Array.isArray(out.changes)).toBe(true);
   }, 30_000);
 
-  it("step 10 — spec0 mock delete removes the mock (CLI-driven teardown)", () => {
+  it("step 10 — spec0 api show returns details for the API", () => {
+    const r = runCli(["api", "show", apiSlug, "--output", "json"], { env: stagingEnvAsRecord() });
+    if (r.status !== 0) {
+      console.error(`[api show] stdout:\n${r.stdout}\n[api show] stderr:\n${r.stderr}`);
+    }
+    expect(r.status).toBe(0);
+
+    // A team SAT can't read the internal summary (403) → api show falls back to
+    // the lean V1 row, which still carries id / name / version / team.
+    const out = JSON.parse(r.stdout) as { apiId?: string; apiName?: string; teamName?: string };
+    expect(out.apiId).toBe(apiId);
+    expect(out.apiName).toBe(apiSlug);
+    expect(out.teamName).toBe(teamSlug);
+  }, 30_000);
+
+  it("step 11 — spec0 mock delete removes the mock (CLI-driven teardown)", () => {
     const r = runCli(["mock", "delete", apiSlug, "--yes"], { env: stagingEnvAsRecord() });
     if (r.status !== 0) {
       console.error(`[mock delete] stdout:\n${r.stdout}\n[mock delete] stderr:\n${r.stderr}`);
@@ -393,7 +407,7 @@ describeFn("staging integration: team-scoped CLI lifecycle (pre-seeded team)", (
     expect(rows.find((row) => row.api === apiSlug)).toBeUndefined();
   }, 30_000);
 
-  it("step 11 — spec0 api delete removes the API (CLI-driven teardown)", () => {
+  it("step 12 — spec0 api delete removes the API (CLI-driven teardown)", () => {
     const r = runCli(["api", "delete", apiSlug, "--yes"], { env: stagingEnvAsRecord() });
     if (r.status !== 0) {
       console.error(`[api delete] stdout:\n${r.stdout}\n[api delete] stderr:\n${r.stderr}`);
