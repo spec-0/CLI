@@ -10,6 +10,7 @@ import { registerMockCreateCommand } from "./create.js";
 import { registerMockListCommand } from "./list.js";
 import { registerMockShowCommand } from "./show.js";
 import { registerMockUrlCommand } from "./url.js";
+import { registerMockDeleteCommand } from "./delete.js";
 
 export function registerMockCommands(program: Command) {
   const mock = program.command("mock").description("Mock server management");
@@ -17,4 +18,5 @@ export function registerMockCommands(program: Command) {
   registerMockListCommand(mock);
   registerMockShowCommand(mock);
   registerMockUrlCommand(mock);
+  registerMockDeleteCommand(mock);
 }

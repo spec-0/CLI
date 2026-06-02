@@ -68,7 +68,10 @@ export function createApiClient(org: OrgConfig) {
 
 /** Org API key client (discovery, registry, CLI workspace). */
 export function createOrgApiClient(ctx: ResolvedOrgContext) {
-  const baseUrl = ctx.apiUrl;
+  // The platform API is served under the `/api-management` context path — the
+  // same base `configureSdkAuth()` gives the SDK. Without it, legacy call sites
+  // hit the host root and 404 (the lone caller, `api show`, did exactly that).
+  const baseUrl = `${ctx.apiUrl.replace(/\/$/, "")}/api-management`;
   const baseHeaders: Record<string, string> = {
     Authorization: `Bearer ${ctx.apiKey}`,
     "X-Org-Id": ctx.orgId,

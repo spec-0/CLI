@@ -1,8 +1,8 @@
 # Staging integration tests for @spec0/cli.
 #
-# Manual-trigger only — runs CLI commands end-to-end against the Spec0
-# staging platform. Tests live under `test/integration/` and share a harness
-# (test/integration/runCli.ts + staging-env.ts).
+# Runs nightly (06:00 UTC) and on manual dispatch — exercises CLI commands
+# end-to-end against the Spec0 staging platform as a smoke test. Tests live
+# under `test/integration/` and share a harness (runCli.ts + staging-env.ts).
 #
 # ONE-TIME SETUP REQUIRED before this workflow can pass:
 #   1. Create a `staging` Environment (Settings → Environments → New environment).
@@ -13,20 +13,16 @@
 #        - SPEC0_SAT_PUBLIC  (Service Access Token with the scopes the
 #          integration tests need — admin:team, read/write:apis,
 #          read/write:specs, read/write:mocks)
-#   Without these the workflow fires but `npm run test:integration` will
-#   skip every test (env-missing → describe.skip), exit 0, and produce a
-#   green run that did nothing — which is also fine.
-#
-# Nightly / post-merge auto-triggers are intentionally omitted — keeping
-# manual-only until the harness stabilises further.
+#   Without these the scheduled/dispatched run still fires but
+#   `npm run test:integration` skips every test (env-missing → describe.skip),
+#   exits 0, and produces a green run that did nothing — which is also fine.
 
 name: Staging Integration
 
 on:
   workflow_dispatch:
-  # Future triggers (left commented for the next reviewer):
-  # schedule:
-  #   - cron: "0 6 * * *"   # nightly 06:00 UTC
+  schedule:
+    - cron: "0 6 * * *" # nightly 06:00 UTC
   # push:
   #   branches: [main]
 
