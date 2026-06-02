@@ -149,7 +149,9 @@ describeFn("staging integration: team-scoped CLI lifecycle (pre-seeded team)", (
   // recurring service-credential run, and team-scoped writes need a real user
   // principal (a SAT, not a legacy org key).
   const stamp = Date.now();
-  const teamSlug = process.env.SPEC0_SMOKE_TEAM ?? "cli-smoke";
+  // `||` (not `??`) so an empty SPEC0_SMOKE_TEAM (CI passes "" when the var is
+  // unset) still falls back to the default rather than searching for team "".
+  const teamSlug = process.env.SPEC0_SMOKE_TEAM || "cli-smoke";
   const apiSlug = `cli-lc-api-${stamp}`;
 
   let apiId: string | undefined;
