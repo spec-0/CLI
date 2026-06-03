@@ -156,7 +156,8 @@ Every command supports `--output=text|json|yaml`. Progress / logs go to stderr, 
 | -------------------------- | ------------------------------------------------------------------------ |
 | `spec0 commands`           | List every command with its flags, args, and exit codes (JSON-friendly). |
 | `spec0 commands <pattern>` | Filter the manifest by substring.                                        |
-| `spec0 mcp url`            | Print the MCP server URL for Cursor / Claude.                            |
+| `spec0 mcp url`            | Print the MCP server config for Cursor / Claude.                         |
+| `spec0 mcp install`        | Install the MCP server into Cursor and/or Claude (`--client`).           |
 
 ### Other
 
