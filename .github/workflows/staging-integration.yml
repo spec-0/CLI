@@ -7,8 +7,11 @@
 # ONE-TIME SETUP REQUIRED before this workflow can pass:
 #   1. Create a `staging` Environment (Settings → Environments → New environment).
 #   2. Add Environment **Variables** (not secrets):
-#        - SPEC0_API_URL  (the staging platform's API host)
-#        - SPEC0_ORG_ID   (UUID of the test org used by CI)
+#        - SPEC0_API_URL    (the staging platform's API host)
+#        - SPEC0_ORG_ID     (UUID of the test org used by CI)
+#        - SPEC0_SMOKE_TEAM (name of the pre-seeded team the SAT is scoped to;
+#                            the lifecycle test pushes into it. Defaults to
+#                            "cli-smoke" if unset.)
 #   3. Add Environment **Secret**:
 #        - SPEC0_SAT_PUBLIC  (Service Access Token with the scopes the
 #          integration tests need — admin:team, read/write:apis,
@@ -40,6 +43,9 @@ jobs:
       SPEC0_API_URL: ${{ vars.SPEC0_API_URL }}
       SPEC0_ORG_ID: ${{ vars.SPEC0_ORG_ID }}
       SPEC0_TOKEN: ${{ secrets.SPEC0_SAT_PUBLIC }}
+      # The pre-seeded team the lifecycle test pushes into. Must match the team
+      # the SAT is scoped to. Falls back to "cli-smoke" in the test if unset.
+      SPEC0_SMOKE_TEAM: ${{ vars.SPEC0_SMOKE_TEAM }}
     steps:
       - uses: actions/checkout@v4
 
