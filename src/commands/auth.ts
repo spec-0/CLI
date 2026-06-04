@@ -15,6 +15,7 @@ import {
   setDefaultOrg,
   clearConfig,
 } from "../lib/config.js";
+import { resolveOrgContext } from "../lib/auth-context.js";
 import { resolvedPlatformAppUrl, resolvedPlatformApiUrl } from "../lib/platform-defaults.js";
 import { ExitCode, exit } from "../lib/exit-codes.js";
 
@@ -27,21 +28,24 @@ function getApiUrl(): string {
 }
 
 function printAuthStatus() {
-  const defaultOrgId = getDefaultOrgId();
-  if (!defaultOrgId) {
+  // Reflect the context commands will actually use: SPEC0_* env vars override the stored login
+  // (resolveOrgContext applies that precedence). Reading only the stored config here misreported
+  // the active target whenever the env vars were set.
+  const ctx = resolveOrgContext();
+  if (!ctx) {
     console.log(chalk.yellow("Not logged in. Run 'spec0 auth login'."));
     console.log(chalk.gray("For CI/CD, set SPEC0_TOKEN and SPEC0_ORG_ID environment variables."));
     return;
   }
-  const org = getOrgConfig(defaultOrgId);
-  if (!org) {
-    console.log(chalk.yellow("Org config missing. Run 'spec0 auth login'."));
-    return;
-  }
-  console.log(chalk.green("✓ Logged in"));
-  console.log(`  Org:     ${org.name}`);
-  console.log(`  API URL: ${org.apiUrl}`);
-  console.log(`  Key:     ${org.keyName ?? "(unnamed)"}`);
+  const fromEnv = Boolean(
+    (process.env.SPEC0_TOKEN ?? process.env.PLATFORM_API_TOKEN) &&
+    (process.env.SPEC0_ORG_ID ?? process.env.PLATFORM_ORG_ID),
+  );
+  const stored = getOrgConfig(ctx.orgId);
+  console.log(chalk.green("✓ Logged in") + (fromEnv ? chalk.gray("  (via environment)") : ""));
+  console.log(`  Org:     ${ctx.orgName ?? ctx.orgId}`);
+  console.log(`  API URL: ${ctx.apiUrl}`);
+  console.log(`  Key:     ${fromEnv ? "SPEC0_TOKEN (env)" : (stored?.keyName ?? "(unnamed)")}`);
 }
 
 export function registerAuthCommands(program: Command) {
