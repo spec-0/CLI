@@ -8,9 +8,9 @@
  *   lint, search, registry, …). Stored on login as `org.apiUrl` and used by
  *   `createOrgApiClient` / `createApiClient`.
  *
- * Defaults below match local dev (Next :3000, Spring :8080 + context path). Override both for
+ * Defaults below match local dev (Next :3000, backend :8080 at the host root). Override both for
  * staging/production. `SPEC0_API_URL` should align with `NEXT_PUBLIC_API_BASE_URL` in
- * api-management-ui, not the Next.js site origin alone.
+ * the web UI, not the Next.js site origin alone.
  *
  * Legacy: `PLATFORM_APP_URL` / `PLATFORM_API_URL` are still accepted as fallbacks.
  */
@@ -19,9 +19,10 @@
 export const DEFAULT_PLATFORM_APP_URL = "https://app.spec0.io";
 
 /**
- * Spring Boot API base (include servlet context path if your deploy uses one).
+ * Backend API base. The platform serves at the host root, so this is a bare host
+ * with no path suffix; the SDK and raw call sites append their own service paths.
  */
-export const DEFAULT_PLATFORM_API_URL = "https://api.spec0.io/api-management";
+export const DEFAULT_PLATFORM_API_URL = "https://api.spec0.io";
 
 function normalizeOrigin(url: string): string {
   return url.trim().replace(/\/$/, "");

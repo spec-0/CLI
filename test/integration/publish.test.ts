@@ -68,9 +68,9 @@ interface PublishJsonOutput {
 async function cleanupPublicApi(publicApiId: string): Promise<void> {
   if (!STAGING_ENV_AVAILABLE) return;
   // The SDK uses a global `OpenAPI` config singleton. Configure it the same way
-  // the CLI does in `configureSdkAuth()` — the staging API URL needs the
-  // `/api-management` context path appended.
-  OpenAPI.BASE = `${stagingEnv.apiUrl}/api-management`;
+  // the CLI does in `configureSdkAuth()` — the staging API URL is the host root
+  // with no path suffix.
+  OpenAPI.BASE = stagingEnv.apiUrl;
   OpenAPI.TOKEN = stagingEnv.token;
   OpenAPI.HEADERS = { "X-Org-Id": stagingEnv.orgId };
   try {
