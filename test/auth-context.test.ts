@@ -1,11 +1,11 @@
-import { getOrgConfig, setOrgConfig, setDefaultOrg, clearConfig } from "../src/lib/config.js";
+import { setOrgConfig, setDefaultOrg, clearConfig } from "../src/lib/config.js";
 import { resolveOrgContext, requireOrgContext } from "../src/lib/auth-context.js";
 
 const ORG_ID = "test-org-authctx";
 const BASE_ORG = {
   apiKey: "stored-key",
   name: "Test Org",
-  apiUrl: "https://api.spec0.io/api-management",
+  apiUrl: "https://api.spec0.io",
 };
 
 const ENV_VARS = [
@@ -39,20 +39,20 @@ describe("resolveOrgContext — stored config", () => {
 
   it("uses stored apiUrl when no env override", () => {
     const ctx = resolveOrgContext();
-    expect(ctx?.apiUrl).toBe("https://api.spec0.io/api-management");
+    expect(ctx?.apiUrl).toBe("https://api.spec0.io");
     expect(ctx?.apiKey).toBe("stored-key");
   });
 
   it("SPEC0_API_URL overrides stored apiUrl", () => {
-    process.env.SPEC0_API_URL = "https://staging.api.spec0.io/api-management";
+    process.env.SPEC0_API_URL = "https://staging.api.spec0.io";
     const ctx = resolveOrgContext();
-    expect(ctx?.apiUrl).toBe("https://staging.api.spec0.io/api-management");
+    expect(ctx?.apiUrl).toBe("https://staging.api.spec0.io");
   });
 
   it("PLATFORM_API_URL still works as fallback override", () => {
-    process.env.PLATFORM_API_URL = "https://legacy.example.com/api-management";
+    process.env.PLATFORM_API_URL = "https://legacy.example.com";
     const ctx = resolveOrgContext();
-    expect(ctx?.apiUrl).toBe("https://legacy.example.com/api-management");
+    expect(ctx?.apiUrl).toBe("https://legacy.example.com");
   });
 
   it("returns null when no config and no env", () => {
@@ -77,9 +77,9 @@ describe("resolveOrgContext — SPEC0_TOKEN env vars (CI mode)", () => {
   it("SPEC0_API_URL sets apiUrl in env mode", () => {
     process.env.SPEC0_TOKEN = "ci-token";
     process.env.SPEC0_ORG_ID = "ci-org-id";
-    process.env.SPEC0_API_URL = "https://custom.api.spec0.io/api-management";
+    process.env.SPEC0_API_URL = "https://custom.api.spec0.io";
     const ctx = resolveOrgContext();
-    expect(ctx?.apiUrl).toBe("https://custom.api.spec0.io/api-management");
+    expect(ctx?.apiUrl).toBe("https://custom.api.spec0.io");
   });
 });
 

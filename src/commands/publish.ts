@@ -253,8 +253,8 @@ export function registerPublishCommand(program: Command) {
         spinner.start("Publishing to public registry...");
         // Wire the @spec0/sdk-public-platform global config from the resolved
         // org context. The SDK targets `/api/v1/public/apis`; `configureSdkAuth`
-        // sets `OpenAPI.BASE = ctx.apiUrl + '/api-management'` so the final URL
-        // matches the legacy `/api-management/api/v1/public/apis` path.
+        // sets `OpenAPI.BASE = ctx.apiUrl` (the host root), so the final URL is
+        // `<host>/api/v1/public/apis`.
         configureSdkAuth(ctx);
         // `semver: boolean` is the new ADR-0026 shape. The SDK type still has the
         // legacy `versionBump` field; cast through `unknown` until the SDK is

@@ -134,8 +134,8 @@ interface PushJsonOutput {
 
 function configureSdkForStaging(): void {
   // Mirrors `configureSdkAuth` in src/lib/api-client.ts — same path that the
-  // CLI sets up for its own SDK calls.
-  OpenAPI.BASE = `${stagingEnv.apiUrl}/api-management`;
+  // CLI sets up for its own SDK calls. The host root, no path suffix.
+  OpenAPI.BASE = stagingEnv.apiUrl;
   OpenAPI.TOKEN = stagingEnv.token;
   OpenAPI.HEADERS = { "X-Org-Id": stagingEnv.orgId };
 }
@@ -277,7 +277,7 @@ describeFn("staging integration: team-scoped CLI lifecycle (pre-seeded team)", (
     expect(r.status).toBe(0);
 
     const out = JSON.parse(r.stdout) as MockCreateJsonOutput;
-    expect(out.mockUrl).toContain("/api-management/v2/mock-server/");
+    expect(out.mockUrl).toContain("/v2/mock-server/");
     expect(typeof out.created).toBe("boolean");
     // capture mockServerId for cleanup (parse from URL: /v2/mock-server/<uuid>)
     const m = /\/mock-server\/([0-9a-f-]+)/i.exec(out.mockUrl);
@@ -295,7 +295,7 @@ describeFn("staging integration: team-scoped CLI lifecycle (pre-seeded team)", (
     const rows = Array.isArray(parsed) ? parsed : (parsed.data ?? []);
     const hit = rows.find((r) => r.api === apiSlug);
     expect(hit).toBeDefined();
-    expect(hit?.mockUrl).toContain("/api-management/v2/mock-server/");
+    expect(hit?.mockUrl).toContain("/v2/mock-server/");
   }, 30_000);
 
   it("step 6 — spec0 mock show finds the mock by API slug", () => {
@@ -309,7 +309,7 @@ describeFn("staging integration: team-scoped CLI lifecycle (pre-seeded team)", (
 
     const out = JSON.parse(r.stdout) as MockShowJsonOutput;
     expect(out.apiName).toBe(apiSlug);
-    expect(out.mockUrl).toContain("/api-management/v2/mock-server/");
+    expect(out.mockUrl).toContain("/v2/mock-server/");
   }, 30_000);
 
   it("step 7 — spec0 mock url emits a single absolute URL", () => {
@@ -322,7 +322,7 @@ describeFn("staging integration: team-scoped CLI lifecycle (pre-seeded team)", (
     const url = r.stdout.trim();
     expect(url.split("\n").length).toBe(1);
     expect(url.startsWith(stagingEnv.apiUrl)).toBe(true);
-    expect(url).toContain("/api-management/v2/mock-server/");
+    expect(url).toContain("/v2/mock-server/");
   }, 30_000);
 
   it("step 8 — spec0 push v2 publishes a second version", async () => {
