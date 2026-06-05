@@ -2,9 +2,10 @@
  * spec0 mcp url | test | install
  *
  * Helpers for pointing MCP clients (Cursor, Claude) at the Spec0 MCP server.
- * The server is an SSE endpoint authenticated with a bearer token; the canonical
- * config references `${SPEC0_TOKEN}` so the secret stays in the environment rather
- * than being written into client config files.
+ * The server is a single Streamable HTTP endpoint; a bearer token is optional
+ * (anonymous gets the public docs tools, a token unlocks org-scoped tools). The
+ * canonical config references `${SPEC0_TOKEN}` so the secret stays in the
+ * environment rather than being written into client config files.
  */
 
 import { Command } from "commander";
@@ -144,9 +145,10 @@ function installCursor(mcpUrl: string): void {
 
 /**
  * Register the server with Claude via `claude mcp add`. The flag form follows the
- * current Claude CLI: all options precede the server name, the SSE transport is
- * selected explicitly, and the bearer header is passed verbatim so the
- * `${SPEC0_TOKEN}` placeholder is expanded by the client at connect time.
+ * current Claude CLI: all options precede the server name, the Streamable HTTP
+ * transport is selected explicitly (`--transport http`), and the bearer header is
+ * passed verbatim so the `${SPEC0_TOKEN}` placeholder is expanded by the client at
+ * connect time.
  *
  * If the `claude` binary isn't on PATH (or the invocation fails for any reason)
  * we don't hard-fail: we print the exact command plus the manual JSON so the user
@@ -157,13 +159,13 @@ function installClaude(mcpUrl: string): void {
     "mcp",
     "add",
     "--transport",
-    "sse",
+    "http",
     SERVER_KEY,
     mcpUrl,
     "--header",
     `Authorization: ${AUTH_HEADER}`,
   ];
-  const printableCommand = `claude mcp add --transport sse ${SERVER_KEY} ${mcpUrl} --header "Authorization: ${AUTH_HEADER}"`;
+  const printableCommand = `claude mcp add --transport http ${SERVER_KEY} ${mcpUrl} --header "Authorization: ${AUTH_HEADER}"`;
 
   let result: ReturnType<typeof spawnSync> | undefined;
   try {
@@ -185,7 +187,7 @@ function installClaude(mcpUrl: string): void {
   console.log("Or add this to your Claude MCP config manually:");
   console.log(
     JSON.stringify(
-      { mcpServers: { [SERVER_KEY]: { type: "sse", ...canonicalServerConfig(mcpUrl) } } },
+      { mcpServers: { [SERVER_KEY]: { type: "http", ...canonicalServerConfig(mcpUrl) } } },
       null,
       2,
     ),

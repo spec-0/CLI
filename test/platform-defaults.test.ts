@@ -1,12 +1,22 @@
 import {
   DEFAULT_PLATFORM_API_URL,
   DEFAULT_PLATFORM_APP_URL,
+  DEFAULT_PLATFORM_MCP_URL,
   resolvedPlatformApiUrl,
   resolvedPlatformAppUrl,
+  resolvedPlatformMcpBaseUrl,
+  resolvedPlatformMcpUrl,
 } from "../src/lib/platform-defaults.js";
 
 describe("platform-defaults", () => {
-  const vars = ["SPEC0_APP_URL", "SPEC0_API_URL", "PLATFORM_APP_URL", "PLATFORM_API_URL"] as const;
+  const vars = [
+    "SPEC0_APP_URL",
+    "SPEC0_API_URL",
+    "PLATFORM_APP_URL",
+    "PLATFORM_API_URL",
+    "SPEC0_MCP_URL",
+    "PLATFORM_MCP_URL",
+  ] as const;
   const saved = Object.fromEntries(vars.map((k) => [k, process.env[k]]));
 
   afterEach(() => {
@@ -19,6 +29,7 @@ describe("platform-defaults", () => {
   it("production defaults point to spec0.io", () => {
     expect(DEFAULT_PLATFORM_APP_URL).toBe("https://app.spec0.io");
     expect(DEFAULT_PLATFORM_API_URL).toBe("https://api.spec0.io/api-management");
+    expect(DEFAULT_PLATFORM_MCP_URL).toBe("https://api.spec0.io/mcp");
   });
 
   describe("resolvedPlatformApiUrl", () => {
@@ -68,6 +79,39 @@ describe("platform-defaults", () => {
       delete process.env.PLATFORM_APP_URL;
       process.env.SPEC0_API_URL = "https://api.example.com";
       expect(resolvedPlatformAppUrl()).toBe(DEFAULT_PLATFORM_APP_URL);
+    });
+  });
+
+  describe("resolvedPlatformMcpUrl", () => {
+    it("returns the single Streamable HTTP endpoint by default", () => {
+      for (const k of vars) delete process.env[k];
+      expect(resolvedPlatformMcpUrl()).toBe("https://api.spec0.io/mcp");
+    });
+
+    it("SPEC0_MCP_URL takes priority and is normalized", () => {
+      process.env.SPEC0_MCP_URL = "https://staging.spec0.io/mcp/";
+      process.env.PLATFORM_MCP_URL = "https://old.spec0.io/mcp";
+      expect(resolvedPlatformMcpUrl()).toBe("https://staging.spec0.io/mcp");
+    });
+
+    it("PLATFORM_MCP_URL works as fallback when SPEC0_MCP_URL unset", () => {
+      delete process.env.SPEC0_MCP_URL;
+      process.env.PLATFORM_MCP_URL = "https://legacy.spec0.io/mcp";
+      expect(resolvedPlatformMcpUrl()).toBe("https://legacy.spec0.io/mcp");
+    });
+  });
+
+  describe("resolvedPlatformMcpBaseUrl", () => {
+    it("yields a sane health target from the default endpoint", () => {
+      for (const k of vars) delete process.env[k];
+      // No trailing /sse to strip: the endpoint is already the base.
+      expect(resolvedPlatformMcpBaseUrl()).toBe("https://api.spec0.io/mcp");
+      expect(`${resolvedPlatformMcpBaseUrl()}/health`).toBe("https://api.spec0.io/mcp/health");
+    });
+
+    it("still trims a legacy trailing /sse from an override for back-compat", () => {
+      process.env.SPEC0_MCP_URL = "https://legacy.spec0.io/mcp/sse";
+      expect(resolvedPlatformMcpBaseUrl()).toBe("https://legacy.spec0.io/mcp");
     });
   });
 });

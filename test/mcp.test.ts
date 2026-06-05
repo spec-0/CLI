@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 const rootDir = process.cwd();
 const cli = join(rootDir, "dist", "index.js");
 
-const CANONICAL_MCP_URL = "https://api.spec0.io/mcp/sse";
+const CANONICAL_MCP_URL = "https://api.spec0.io/mcp";
 
 let testHome: string;
 
@@ -103,12 +103,12 @@ describe("spec0 mcp install --client cursor", () => {
   it("respects SPEC0_MCP_URL override when writing the config", () => {
     const r = run(["mcp", "install", "--client", "cursor"], {
       ...AUTHED_ENV,
-      SPEC0_MCP_URL: "https://staging.spec0.io/mcp/sse",
+      SPEC0_MCP_URL: "https://staging.spec0.io/mcp",
     });
     expect(r.status).toBe(0);
 
     const config = JSON.parse(readFileSync(cursorConfigPath(), "utf-8"));
-    expect(config.mcpServers.spec0.url).toBe("https://staging.spec0.io/mcp/sse");
+    expect(config.mcpServers.spec0.url).toBe("https://staging.spec0.io/mcp");
   });
 });
 

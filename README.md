@@ -156,7 +156,7 @@ Every command supports `--output=text|json|yaml`. Progress / logs go to stderr, 
 | -------------------------- | ------------------------------------------------------------------------ |
 | `spec0 commands`           | List every command with its flags, args, and exit codes (JSON-friendly). |
 | `spec0 commands <pattern>` | Filter the manifest by substring.                                        |
-| `spec0 mcp url`            | Print the MCP server config for Cursor / Claude.                         |
+| `spec0 mcp url`            | Print the MCP (Streamable HTTP) server config for Cursor / Claude.       |
 | `spec0 mcp install`        | Install the MCP server into Cursor and/or Claude (`--client`).           |
 
 ### Other
@@ -178,6 +178,7 @@ Two paths:
 | `SPEC0_ORG_ID`  | UUID of the org the CLI acts against.                                                                                                                             | _required_                   |
 | `SPEC0_API_URL` | Platform backend base URL.                                                                                                                                        | `https://api.spec0.io`       |
 | `SPEC0_APP_URL` | Platform web app (used for auth callback + dashboard links).                                                                                                      | `https://spec0.io`           |
+| `SPEC0_MCP_URL` | MCP server endpoint (single Streamable HTTP URL) emitted by `spec0 mcp url` / `mcp install`.                                                                      | `https://api.spec0.io/mcp`   |
 | `SPEC0_MODE`    | Set to `agent` to flip every default for machine callers: JSON output, no colour, no spinners, no update banner. See the [agent guide](docs/guides/ai-agents.md). | _unset_ (human mode)         |
 
 `PLATFORM_*` variants are accepted for backwards compatibility; they'll be removed in the next major. Use `spec0 doctor` to see which source each value is resolving from.
