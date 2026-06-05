@@ -855,6 +855,33 @@ test("text mode still prints errors to stderr (not stdout)", () => {
   assert(r.stderr.includes("Not authenticated"), "stderr should have error message");
 });
 
+// ── whoami reflects the active context ───────────────────────────────────────
+section("whoami reflects env override");
+
+test("whoami reports the SPEC0_* env context, not just stored config", () => {
+  const r = run(["whoami"], {
+    env: {
+      SPEC0_TOKEN: "pat_smoke_token",
+      SPEC0_ORG_ID: "org-from-env-123",
+      SPEC0_API_URL: "https://env-override.example.test",
+      HOME: resolve(root, "test", ".jest-home"),
+    },
+  });
+  assert(r.status === 0, `exit ${r.status}: ${r.stderr}`);
+  assert(
+    r.stdout.includes("org-from-env-123"),
+    `Org should reflect env SPEC0_ORG_ID, got: ${r.stdout}`,
+  );
+  assert(
+    r.stdout.includes("https://env-override.example.test"),
+    `API URL should reflect env SPEC0_API_URL, got: ${r.stdout}`,
+  );
+  assert(
+    r.stdout.includes("via environment"),
+    `should flag the env-sourced context, got: ${r.stdout}`,
+  );
+});
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 const total = passed + failed;

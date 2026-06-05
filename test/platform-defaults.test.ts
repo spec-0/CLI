@@ -28,7 +28,7 @@ describe("platform-defaults", () => {
 
   it("production defaults point to spec0.io", () => {
     expect(DEFAULT_PLATFORM_APP_URL).toBe("https://app.spec0.io");
-    expect(DEFAULT_PLATFORM_API_URL).toBe("https://api.spec0.io/api-management");
+    expect(DEFAULT_PLATFORM_API_URL).toBe("https://api.spec0.io");
     expect(DEFAULT_PLATFORM_MCP_URL).toBe("https://api.spec0.io/mcp");
   });
 
@@ -51,8 +51,8 @@ describe("platform-defaults", () => {
     });
 
     it("strips trailing slash", () => {
-      process.env.SPEC0_API_URL = "https://api.example.com/api-management/";
-      expect(resolvedPlatformApiUrl()).toBe("https://api.example.com/api-management");
+      process.env.SPEC0_API_URL = "https://api.example.com/";
+      expect(resolvedPlatformApiUrl()).toBe("https://api.example.com");
     });
   });
 

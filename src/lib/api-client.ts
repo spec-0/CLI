@@ -68,10 +68,10 @@ export function createApiClient(org: OrgConfig) {
 
 /** Org API key client (discovery, registry, CLI workspace). */
 export function createOrgApiClient(ctx: ResolvedOrgContext) {
-  // The platform API is served under the `/api-management` context path — the
-  // same base `configureSdkAuth()` gives the SDK. Without it, legacy call sites
-  // hit the host root and 404 (the lone caller, `api show`, did exactly that).
-  const baseUrl = `${ctx.apiUrl.replace(/\/$/, "")}/api-management`;
+  // The platform API is served at the host root — the same base `configureSdkAuth()`
+  // gives the SDK. Call sites supply their own service path (e.g. `api show`), so we
+  // only normalize a trailing slash here and never append a context path.
+  const baseUrl = ctx.apiUrl.replace(/\/$/, "");
   const baseHeaders: Record<string, string> = {
     Authorization: `Bearer ${ctx.apiKey}`,
     "X-Org-Id": ctx.orgId,
@@ -164,8 +164,8 @@ export { orgHeaders };
  * resolved org context. The SDK's request builder formats URLs as
  * `OpenAPI.BASE + <service-path>`, where service paths look like
  * `/api/v1/public/apis`. The CLI's stored `apiUrl` is the platform host root
- * with no context path, so we append `/api-management` here to match the legacy
- * raw HTTP call sites (which prefixed `/api-management/api/v1/public/apis`).
+ * and the SDK already carries context-path-less service paths, so `OpenAPI.BASE`
+ * is the bare host with no suffix appended.
  *
  * `OpenAPI.TOKEN` is set to the org API key — the SDK adds the
  * `Authorization: Bearer <token>` header automatically. `X-Org-Id` rides on
@@ -175,7 +175,7 @@ export { orgHeaders };
  * idempotent and safe to invoke multiple times in the same process.
  */
 export function configureSdkAuth(ctx: ResolvedOrgContext): void {
-  OpenAPI.BASE = `${ctx.apiUrl}/api-management`;
+  OpenAPI.BASE = ctx.apiUrl;
   OpenAPI.TOKEN = ctx.apiKey;
   OpenAPI.HEADERS = { "X-Org-Id": ctx.orgId };
 }
