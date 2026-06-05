@@ -24,6 +24,16 @@ export const DEFAULT_PLATFORM_APP_URL = "https://app.spec0.io";
  */
 export const DEFAULT_PLATFORM_API_URL = "https://api.spec0.io";
 
+/**
+ * Canonical MCP (Model Context Protocol) server endpoint. This is the single
+ * Streamable HTTP endpoint that MCP clients (Cursor, Claude) connect to over
+ * HTTP POST. A bearer token is optional: anonymous access exposes the public
+ * docs tools, and an authenticated token unlocks the org-scoped tools. It is a
+ * different surface from the REST API base, so it has its own default and its
+ * own override env var.
+ */
+export const DEFAULT_PLATFORM_MCP_URL = "https://api.spec0.io/mcp";
+
 function normalizeOrigin(url: string): string {
   return url.trim().replace(/\/$/, "");
 }
@@ -38,4 +48,26 @@ export function resolvedPlatformAppUrl(): string {
 export function resolvedPlatformApiUrl(): string {
   const raw = (process.env.SPEC0_API_URL ?? process.env.PLATFORM_API_URL)?.trim();
   return normalizeOrigin(raw || DEFAULT_PLATFORM_API_URL);
+}
+
+/**
+ * Canonical MCP Streamable HTTP endpoint clients connect to. Override with
+ * `SPEC0_MCP_URL` (legacy `PLATFORM_MCP_URL` accepted as a fallback) for
+ * staging/self-hosted.
+ */
+export function resolvedPlatformMcpUrl(): string {
+  const raw = (process.env.SPEC0_MCP_URL ?? process.env.PLATFORM_MCP_URL)?.trim();
+  return normalizeOrigin(raw || DEFAULT_PLATFORM_MCP_URL);
+}
+
+/**
+ * MCP base used as the root for sibling MCP paths such as the health probe
+ * behind `spec0 mcp test`. With the single Streamable HTTP endpoint the URL is
+ * already the base, so for back-compat we only trim a legacy trailing `/sse`
+ * (older overrides may still carry it) and otherwise return the endpoint as-is.
+ * Derived from the same default/override as {@link resolvedPlatformMcpUrl} so
+ * the two never drift apart — e.g. `…/mcp` → `…/mcp/health`.
+ */
+export function resolvedPlatformMcpBaseUrl(): string {
+  return resolvedPlatformMcpUrl().replace(/\/sse$/, "");
 }
