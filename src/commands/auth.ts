@@ -1,5 +1,9 @@
 /**
- * spec0 auth login | logout | status | token | switch
+ * spec0 auth login | logout | status | token
+ *
+ * Single-org model: `login` replaces the stored org (see config.replaceSoleOrg),
+ * so there is no multi-org `switch`. Point at another backend for testing with
+ * the SPEC0_API_URL / SPEC0_APP_URL env vars.
  */
 
 import { Command } from "commander";
@@ -8,14 +12,7 @@ import { createServer } from "http";
 import { randomBytes } from "crypto";
 import open from "open";
 import { PublicOrgsService } from "@spec0/sdk-public-platform";
-import {
-  getConfig,
-  getDefaultOrgId,
-  getOrgConfig,
-  replaceSoleOrg,
-  setDefaultOrg,
-  clearConfig,
-} from "../lib/config.js";
+import { getDefaultOrgId, getOrgConfig, replaceSoleOrg, clearConfig } from "../lib/config.js";
 import { resolveOrgContext } from "../lib/auth-context.js";
 import { configureSdkAuth, errorStatusCode, extractErrorMessage } from "../lib/api-client.js";
 import { resolvedPlatformAppUrl, resolvedPlatformApiUrl } from "../lib/platform-defaults.js";
@@ -215,19 +212,5 @@ export function registerAuthCommands(program: Command) {
       const org = getOrgConfig(defaultOrgId);
       if (!org) exit(ExitCode.AUTH_MISSING);
       console.log(org.apiKey);
-    });
-
-  auth
-    .command("switch <org-name>")
-    .description("Switch default org")
-    .action(async (orgName: string) => {
-      const config = getConfig();
-      const entry = Object.entries(config.orgs).find(([, o]) => o.name === orgName);
-      if (!entry) {
-        console.error(chalk.red(`Org '${orgName}' not found.`));
-        exit(ExitCode.NOT_FOUND);
-      }
-      setDefaultOrg(entry[0]);
-      console.log(chalk.green(`Switched to org: ${orgName}`));
     });
 }
