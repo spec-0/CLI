@@ -33,6 +33,11 @@ import { registerCiCommands } from "./commands/ci/index.js";
 import { registerCommandsCommand } from "./commands/commands.js";
 import { getCliVersion } from "./lib/version.js";
 import { notifyUpdateIfAvailable } from "./lib/update-check.js";
+import { installHttpInstrumentation } from "./lib/http-trace.js";
+
+// Apply the default request timeout (and wire verbose tracing) to every SDK
+// call by wrapping the global fetch once, before any command runs.
+installHttpInstrumentation();
 
 const program = new Command();
 

@@ -6,7 +6,7 @@ import got, { type Options } from "got";
 import { ApiError, OpenAPI } from "@spec0/sdk-public-platform";
 import type { OrgConfig } from "./config.js";
 import type { ResolvedOrgContext } from "./auth-context.js";
-import { httpTraceEnabled, traceRequest, traceResponse } from "./http-trace.js";
+import { httpTimeoutMs, httpTraceEnabled, traceRequest, traceResponse } from "./http-trace.js";
 
 export interface ApiClientOptions {
   apiUrl?: string;
@@ -20,6 +20,9 @@ export interface ApiClientOptions {
  * stderr (the SDK is traced separately via the global `fetch` wrapper).
  */
 const http = got.extend({
+  // Fail fast on a hung connection rather than blocking the CLI forever.
+  // got's TimeoutError carries code ETIMEDOUT, which classifies to NETWORK_ERROR.
+  timeout: { request: httpTimeoutMs() },
   hooks: {
     beforeRequest: [
       (options) => {

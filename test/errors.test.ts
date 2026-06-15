@@ -72,6 +72,22 @@ describe("buildApiError — network errors", () => {
     expect(report.message).toContain("host not found");
   });
 
+  it("classifies a fetch timeout (DOMException name, no code) as NETWORK_ERROR", () => {
+    const err = Object.assign(new Error("The operation was aborted due to timeout"), {
+      name: "TimeoutError",
+    });
+    const report = buildApiError(err, { action: "api list" });
+    expect(report.code).toBe(ExitCode.NETWORK_ERROR);
+    expect(report.message).toContain("timed out");
+  });
+
+  it("classifies an aborted request as NETWORK_ERROR", () => {
+    const err = Object.assign(new Error("aborted"), { name: "AbortError" });
+    const report = buildApiError(err, { action: "api list" });
+    expect(report.code).toBe(ExitCode.NETWORK_ERROR);
+    expect(report.message).toContain("request aborted");
+  });
+
   it("falls back to the raw message when nothing else is available", () => {
     const report = buildApiError(new Error("kaboom"), { action: "api list" });
     expect(report.code).toBe(ExitCode.NETWORK_ERROR);
