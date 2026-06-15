@@ -7,17 +7,19 @@ import chalk from "chalk";
 import { createServer } from "http";
 import { randomBytes } from "crypto";
 import open from "open";
+import { PublicOrgsService } from "@spec0/sdk-public-platform";
 import {
   getConfig,
   getDefaultOrgId,
   getOrgConfig,
-  setOrgConfig,
+  replaceSoleOrg,
   setDefaultOrg,
   clearConfig,
 } from "../lib/config.js";
 import { resolveOrgContext } from "../lib/auth-context.js";
+import { configureSdkAuth, errorStatusCode, extractErrorMessage } from "../lib/api-client.js";
 import { resolvedPlatformAppUrl, resolvedPlatformApiUrl } from "../lib/platform-defaults.js";
-import { ExitCode, exit } from "../lib/exit-codes.js";
+import { ExitCode, exit, exitCodeForHttpStatus } from "../lib/exit-codes.js";
 
 function getAppUrl(): string {
   return resolvedPlatformAppUrl();
@@ -143,16 +145,48 @@ export function registerAuthCommands(program: Command) {
       const apiUrlForStore = opts.apiUrl?.trim()
         ? opts.apiUrl.trim().replace(/\/$/, "")
         : getApiUrl();
-      setOrgConfig(result.orgId, {
+      // Single-org model: the org you just authenticated becomes the one and
+      // only active org. Replacing (not merging) prevents a stale prior login —
+      // e.g. an old localhost entry — from remaining the silent default and
+      // making every later command fail against a dead host.
+      replaceSoleOrg(result.orgId, {
         apiKey: result.token,
         name: result.orgName,
         apiUrl: apiUrlForStore,
         keyName,
       });
-      const config = getConfig();
-      if (!config.defaultOrg) {
-        setDefaultOrg(result.orgId);
+
+      // Verify the stored credentials actually reach the platform before
+      // reporting success. The browser redirect only proves the user authorised
+      // the CLI; it does not prove the token + API base are usable. One
+      // lightweight authenticated call turns a later opaque "api list failed:
+      // Not Found" into an explicit, actionable error at login time.
+      configureSdkAuth({
+        orgId: result.orgId,
+        apiKey: result.token,
+        apiUrl: apiUrlForStore,
+        orgName: result.orgName,
+      });
+      try {
+        await PublicOrgsService.getOrgSummary();
+      } catch (err) {
+        const status = errorStatusCode(err);
+        const detail = extractErrorMessage(err) ?? (err as Error).message;
+        console.error(
+          chalk.red(
+            `Logged in, but could not reach the platform at ${apiUrlForStore}` +
+              (status ? ` (HTTP ${status})` : "") +
+              `: ${detail}`,
+          ),
+        );
+        console.error(
+          chalk.gray(
+            "Credentials were saved. Retry 'spec0 auth login', or set SPEC0_API_URL to a reachable backend.",
+          ),
+        );
+        exit(exitCodeForHttpStatus(status));
       }
+
       console.log(chalk.green("Logged in successfully."));
       console.log(`  Org: ${result.orgName}`);
       console.log(`  API: ${apiUrlForStore}`);
