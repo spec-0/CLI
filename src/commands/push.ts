@@ -251,6 +251,10 @@ async function runPush(
 
     const displayVersion = reg.version ?? versionOpt ?? "?";
     const displayName = reg.apiName ?? resolvedName ?? resolvedApiId;
+    // Non-blocking org governance warnings, surfaced when the org runs governance in warn mode.
+    const governanceWarnings =
+      (reg as { governanceWarnings?: Array<{ section?: string; message?: string }> })
+        .governanceWarnings ?? [];
 
     if (format === "json") {
       console.log(
@@ -267,6 +271,7 @@ async function runPush(
             teamName: reg.teamName ?? null,
             orgSlug: reg.orgSlug ?? null,
             registryUrl: reg.registryUrl ?? null,
+            governanceWarnings,
             specUrl,
             mockUrl: mockUrl ?? null,
           },
@@ -288,6 +293,7 @@ async function runPush(
           versionUnchanged: reg.versionUnchanged,
           versionUnchangedHint: reg.versionUnchangedHint,
           created: reg.created,
+          governanceWarnings,
         }),
       );
     }

@@ -346,16 +346,27 @@ test("auth status mentions SPEC0_TOKEN env var for CI guidance", () => {
 
 section("SPEC0_* environment variables");
 
-test("SPEC0_TOKEN recognized — reaches auth step (not 'not authenticated')", () => {
+test("SPEC0_TOKEN recognized — reaches the network step (not the local no-creds gate)", () => {
   const r = run(["push", "--skip-lint", validSpec], {
-    env: { SPEC0_TOKEN: "fake-token", SPEC0_ORG_ID: "fake-org" },
+    env: {
+      SPEC0_TOKEN: "fake-token",
+      SPEC0_ORG_ID: "fake-org",
+      // Pin the API base to a host that is guaranteed never to resolve — RFC 6761 reserves the
+      // `.invalid` TLD, so this fails to connect on every runner regardless of network egress.
+      // The push therefore deterministically dies at the network call instead of reaching a live
+      // backend, which proves the env token was recognized and used to get that far — without
+      // depending on a real server's 401 (or on the default host happening to be unreachable).
+      SPEC0_API_URL: "http://push-smoke.invalid",
+    },
   });
   const out = r.stdout + r.stderr;
-  // Should fail with a network error (can't reach server), NOT an auth missing error
-  assert(!out.includes("Not authenticated"), `Should not say 'Not authenticated': ${out}`);
+  // Must skip the local "Not authenticated / set SPEC0_TOKEN" no-creds gate (token was recognized)…
+  assert(!out.includes("Not authenticated"), `Should not hit the local no-creds gate: ${out}`);
+  // …and fail at the network call against the configured host — a connection error, never an auth
+  // rejection, since the request can never reach a server.
   assert(
-    !out.includes("Run 'spec0 auth login'"),
-    `Should not prompt login when env vars are set: ${out}`,
+    out.includes("Push failed"),
+    `Should attempt the push against the configured host: ${out}`,
   );
 });
 
