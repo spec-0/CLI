@@ -1,14 +1,14 @@
-# `spec0 pull`
+# `spec0 api delete`
 
 > Auto-generated from the `spec0 commands --output=json` manifest. Do not edit by hand.
 > Run `npm run docs` to regenerate after changing command flags.
 
-Download spec from registry (e.g. acme/order-service or acme/order-service@v1.2.0)
+Delete a team-scoped API (name or UUID). Requires --yes.
 
 ## Usage
 
 ```bash
-spec0 pull <ref> [options]
+spec0 api delete <ref> [options]
 ```
 
 ## Arguments
@@ -21,9 +21,9 @@ spec0 pull <ref> [options]
 
 | flag | description | default |
 | --- | --- | --- |
-| `-o, --output <file>` | Write to file instead of stdout |  |
-| `--public` | Reserved for public registry (same endpoint when API is public) |  |
-| `--org <uuid>` | Auth org id (defaults to logged-in org) |  |
+| `--yes` | Skip the confirmation prompt (required for non-interactive use) |  |
+| `--org <uuid>` | Org id override |  |
+| `--output <format>` | Output format: text, json, or yaml (default: text) |  |
 | `--verbose` | Print HTTP request/response traces to stderr |  |
 
 ## Exit codes

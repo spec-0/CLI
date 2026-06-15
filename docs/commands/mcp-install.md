@@ -1,21 +1,21 @@
-# `spec0 auth switch`
+# `spec0 mcp install`
 
 > Auto-generated from the `spec0 commands --output=json` manifest. Do not edit by hand.
 > Run `npm run docs` to regenerate after changing command flags.
 
-Switch default org
+Install the Spec0 MCP server into Cursor and/or Claude
 
 ## Usage
 
 ```bash
-spec0 auth switch <org-name> [options]
+spec0 mcp install [options]
 ```
 
-## Arguments
+## Flags
 
-| name | required | description |
+| flag | description | default |
 | --- | --- | --- |
-| `org-name` | yes |  |
+| `--client <client>` | Target client: cursor, claude, or all | `all` |
 
 ## Exit codes
 
