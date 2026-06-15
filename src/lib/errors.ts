@@ -49,6 +49,13 @@ const HINTS: Partial<Record<ExitCodeValue, string>> = {
  * lives on `err.cause`). Check both.
  */
 function networkLabel(err: unknown): string | undefined {
+  // A `fetch` timeout/cancellation is a DOMException with no `code` — it
+  // identifies itself by `name` ("TimeoutError" / "AbortError") instead.
+  const name =
+    (err as { name?: string })?.name ?? (err as { cause?: { name?: string } })?.cause?.name;
+  if (name === "TimeoutError") return "timed out";
+  if (name === "AbortError") return "request aborted";
+
   const code =
     (err as { code?: string })?.code ?? (err as { cause?: { code?: string } })?.cause?.code;
   if (!code) return undefined;
