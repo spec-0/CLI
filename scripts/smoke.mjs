@@ -558,7 +558,7 @@ test("search without auth exits 3 (AUTH_MISSING)", () => {
   assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
 });
 
-test("mcp url without auth exits 3 (AUTH_MISSING)", () => {
+test("mcp url works without CLI auth (client does OAuth at connect time)", () => {
   const r = run(["mcp", "url"], {
     env: {
       SPEC0_TOKEN: "",
@@ -568,7 +568,9 @@ test("mcp url without auth exits 3 (AUTH_MISSING)", () => {
       HOME: resolve(root, "test", ".jest-home"),
     },
   });
-  assert(r.status === 3, `Expected exit 3 (AUTH_MISSING), got ${r.status}`);
+  assert(r.status === 0, `Expected exit 0, got ${r.status}`);
+  const out = r.stdout + r.stderr;
+  assert(out.includes("/mcp"), `Expected the MCP URL in output. Got: ${out}`);
 });
 
 // ── ci generate ───────────────────────────────────────────────────────────────
