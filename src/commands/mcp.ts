@@ -78,21 +78,7 @@ export function registerMcpCommands(program: Command) {
     .description("Install the Spec0 MCP server into Cursor and/or Claude")
     .option("--client <client>", "Target client: cursor, claude, or all", "all")
     .action(async (opts: { client: string }) => {
-      const client = opts.client.toLowerCase();
-      if (!["cursor", "claude", "all"].includes(client)) {
-        console.error(
-          chalk.red(`Unknown client '${opts.client}'. Expected: cursor, claude, or all.`),
-        );
-        exit(ExitCode.USAGE);
-      }
-
-      const mcpUrl = resolvedPlatformMcpUrl();
-      if (client === "cursor" || client === "all") {
-        installCursor(mcpUrl);
-      }
-      if (client === "claude" || client === "all") {
-        installClaude(mcpUrl);
-      }
+      runMcpInstall(opts.client);
 
       console.log("");
       console.log(
@@ -102,6 +88,29 @@ export function registerMcpCommands(program: Command) {
         ),
       );
     });
+}
+
+/**
+ * Write the Spec0 MCP server config into the requested client(s). Shared by
+ * `spec0 mcp install` and `spec0 setup` so the two stay in lockstep. Validates
+ * the client name (exits USAGE on an unknown one) and writes the canonical
+ * header-less config. Does not print the OAuth note — callers add their own
+ * surrounding output.
+ */
+export function runMcpInstall(clientOpt: string): void {
+  const client = clientOpt.toLowerCase();
+  if (!["cursor", "claude", "all"].includes(client)) {
+    console.error(chalk.red(`Unknown client '${clientOpt}'. Expected: cursor, claude, or all.`));
+    exit(ExitCode.USAGE);
+  }
+
+  const mcpUrl = resolvedPlatformMcpUrl();
+  if (client === "cursor" || client === "all") {
+    installCursor(mcpUrl);
+  }
+  if (client === "claude" || client === "all") {
+    installClaude(mcpUrl);
+  }
 }
 
 /**
