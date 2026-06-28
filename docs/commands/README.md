@@ -2,7 +2,7 @@
 
 > Auto-generated from the `spec0 commands --output=json` manifest. Do not edit by hand.
 
-`@spec0/cli` exposes 34 commands. Each page describes the flags and arguments for a single command.
+`@spec0/cli` exposes 37 commands. Each page describes the flags and arguments for a single command.
 
 | Command | Description |
 | --- | --- |
@@ -32,6 +32,9 @@
 | [`spec0 mcp url`](mcp-url.md) | Print MCP server config for Cursor/Claude |
 | [`spec0 mcp test`](mcp-test.md) | Verify MCP server is responding |
 | [`spec0 mcp install`](mcp-install.md) | Install the Spec0 MCP server into Cursor and/or Claude |
+| [`spec0 skill install`](skill-install.md) | Install the Spec0 skill into Claude Code (~/.claude/skills/spec0) |
+| [`spec0 skill path`](skill-path.md) | Print where 'spec0 skill install' writes the skill |
+| [`spec0 setup`](setup.md) | One command: verify auth, install the MCP server, and install the Claude skill |
 | [`spec0 api list`](api-list.md) | List APIs in your organisation (catalogue view). |
 | [`spec0 api show`](api-show.md) | Show metadata for a single API (no spec body). |
 | [`spec0 api changelog`](api-changelog.md) | Show changes between published versions of an API. |
